@@ -25,7 +25,6 @@ QUEUE_DLQ = "webhook:dlq"
 BASE_DELAY_SECONDS = 5
 
 
-# ---------- realtime UI updates ----------
 def publish_update(event_id: int, status: str, attempt: int = 0):
     redis_client.publish(
         "events:updates",
@@ -37,12 +36,10 @@ def publish_update(event_id: int, status: str, attempt: int = 0):
     )
 
 
-# ---------- delivery ----------
 def deliver_event(event_id: int):
     db = SessionLocal()
 
     try:
-        #  Load event
         event = db.execute(
             text("SELECT * FROM webhook_events WHERE id = :id"),
             {"id": event_id},
@@ -52,7 +49,6 @@ def deliver_event(event_id: int):
             print(f"[worker] Event {event_id} not found")
             return
 
-        #  Resolve route → destination
         route_config = db.execute(
             text("""
                 SELECT mode, dev_target, prod_target
@@ -79,7 +75,6 @@ def deliver_event(event_id: int):
             print(f"[worker] No delivery target for event {event_id}")
             return
 
-        #  Deliver
         try:
             with delivery_latency.time():
                 resp = requests.post(
@@ -91,15 +86,10 @@ def deliver_event(event_id: int):
 
             if resp.status_code < 300:
                 db.execute(
-                    text("""
-                        UPDATE webhook_events
-                        SET status = 'delivered'
-                        WHERE id = :id
-                    """),
+                    text("UPDATE webhook_events SET status = 'delivered' WHERE id = :id"),
                     {"id": event_id},
                 )
                 db.commit()
-
                 events_delivered.inc()
                 publish_update(event_id, "delivered", event.get("attempt_count", 0))
                 print(f"[worker] Event {event_id} → delivered")
@@ -107,23 +97,16 @@ def deliver_event(event_id: int):
 
             raise Exception(f"HTTP {resp.status_code}")
 
-        # 4️⃣ Retry / DLQ
         except Exception as e:
             attempt = (event.get("attempt_count") or 0) + 1
             max_retries = event.get("max_retries", 5)
 
             if attempt < max_retries:
                 print(f"[worker] Event {event_id} retry {attempt}/{max_retries}")
-
                 db.execute(
-                    text("""
-                        UPDATE webhook_events
-                        SET last_error = :error
-                        WHERE id = :id
-                    """),
+                    text("UPDATE webhook_events SET last_error = :error WHERE id = :id"),
                     {"error": str(e), "id": event_id},
                 )
-
                 schedule_retry(db, event_id, attempt)
                 redis_client.lpush(QUEUE_RETRY, str(event_id))
                 events_retried.inc()
@@ -131,18 +114,15 @@ def deliver_event(event_id: int):
 
             else:
                 print(f"[worker] Event {event_id} → DLQ")
-
                 db.execute(
                     text("""
                         UPDATE webhook_events
-                        SET status = 'failed',
-                            last_error = :error
+                        SET status = 'failed', last_error = :error
                         WHERE id = :id
                     """),
                     {"error": str(e), "id": event_id},
                 )
                 db.commit()
-
                 redis_client.lpush(QUEUE_DLQ, str(event_id))
                 events_failed.inc()
                 publish_update(event_id, "failed", attempt)
@@ -151,7 +131,6 @@ def deliver_event(event_id: int):
         db.close()
 
 
-# ---------- retry scheduler ----------
 def schedule_retry(db, event_id: int, attempt: int):
     delay = BASE_DELAY_SECONDS * (2 ** (attempt - 1))
     next_retry_at = datetime.utcnow() + timedelta(seconds=delay)
@@ -159,17 +138,12 @@ def schedule_retry(db, event_id: int, attempt: int):
     db.execute(
         text("""
             UPDATE webhook_events
-            SET
-                attempt_count = :attempt,
+            SET attempt_count = :attempt,
                 next_retry_at = :next_retry_at,
                 status = 'pending'
             WHERE id = :id
         """),
-        {
-            "attempt": attempt,
-            "next_retry_at": next_retry_at,
-            "id": event_id,
-        },
+        {"attempt": attempt, "next_retry_at": next_retry_at, "id": event_id},
     )
     db.commit()
 
@@ -192,14 +166,9 @@ def retry_scheduler():
             for row in rows:
                 redis_client.lpush(QUEUE_MAIN, str(row.id))
                 db.execute(
-                    text("""
-                        UPDATE webhook_events
-                        SET next_retry_at = NULL
-                        WHERE id = :id
-                    """),
+                    text("UPDATE webhook_events SET next_retry_at = NULL WHERE id = :id"),
                     {"id": row.id},
                 )
-
             db.commit()
         finally:
             db.close()
@@ -207,19 +176,40 @@ def retry_scheduler():
         time.sleep(5)
 
 
-# ---------- main ----------
-def main():
-    print("[worker] started, waiting for events...")
+def wait_for_services(retries=15, delay=3):
+    for i in range(retries):
+        try:
+            db = SessionLocal()
+            db.execute(text("SELECT 1"))
+            db.close()
+            redis_client.ping()
+            print("[worker] connections established")
+            return
+        except Exception as e:
+            print(f"[worker] waiting for services... ({i+1}/{retries}): {e}")
+            time.sleep(delay)
+    raise RuntimeError("[worker] Could not connect to services after retries")
 
-    # Prometheus metrics
+
+def main():
+    wait_for_services()
+
+    print("[worker] started, waiting for events...")
     start_http_server(8001)
     print("[worker] metrics available on :8001/metrics")
 
     Thread(target=retry_scheduler, daemon=True).start()
 
     while True:
-        _, event_id = redis_client.brpop(QUEUE_MAIN)
-        deliver_event(int(event_id))
+        try:
+            result = redis_client.brpop(QUEUE_MAIN, timeout=30)
+            if result is None:
+                continue
+            _, event_id = result
+            deliver_event(int(event_id))
+        except Exception as e:
+            print(f"[worker] Redis error, reconnecting: {e}")
+            time.sleep(2)
 
 
 if __name__ == "__main__":

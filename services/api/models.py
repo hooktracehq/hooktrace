@@ -58,6 +58,13 @@ class WebhookEvent(Base):
     status = Column(String, default="pending")
     idempotency_key = Column(String)
 
+
+    attempt_count = Column(Integer, default=0)       
+    max_retries = Column(Integer, default=5)         
+    last_error = Column(Text)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True)  
+    retry_count = Column(Integer, default=0) 
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     route = relationship("WebhookRoute", back_populates="events")
