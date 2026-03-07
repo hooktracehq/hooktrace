@@ -40,35 +40,31 @@ def deliver_event(event_id: int):
     db = SessionLocal()
 
     try:
-        event = db.execute(
-            text("SELECT * FROM webhook_events WHERE id = :id"),
+        # Load event WITH route info via JOIN
+        row = db.execute(
+            text("""
+                SELECT 
+                    e.*,
+                    r.token,
+                    r.route,
+                    r.mode,
+                    r.dev_target,
+                    r.prod_target
+                FROM webhook_events e
+                JOIN webhook_routes r ON r.id = e.route_id
+                WHERE e.id = :id
+            """),
             {"id": event_id},
         ).mappings().first()
 
-        if not event:
+        if not row:
             print(f"[worker] Event {event_id} not found")
             return
 
-        route_config = db.execute(
-            text("""
-                SELECT mode, dev_target, prod_target
-                FROM webhook_routes
-                WHERE token = :token AND route = :route
-            """),
-            {
-                "token": event["token"],
-                "route": event["route"],
-            },
-        ).mappings().first()
-
-        if not route_config:
-            print(f"[worker] No route config for event {event_id}")
-            return
-
         destination_url = (
-            route_config["dev_target"]
-            if route_config["mode"] == "dev"
-            else route_config["prod_target"]
+            row["dev_target"]
+            if row["mode"] == "dev"
+            else row["prod_target"]
         )
 
         if not destination_url:
@@ -79,8 +75,8 @@ def deliver_event(event_id: int):
             with delivery_latency.time():
                 resp = requests.post(
                     destination_url,
-                    json=event["payload"],
-                    headers=event["headers"],
+                    json=row["payload"],
+                    headers=row["headers"],
                     timeout=10,
                 )
 
@@ -91,15 +87,15 @@ def deliver_event(event_id: int):
                 )
                 db.commit()
                 events_delivered.inc()
-                publish_update(event_id, "delivered", event.get("attempt_count", 0))
+                publish_update(event_id, "delivered", row.get("attempt_count", 0))
                 print(f"[worker] Event {event_id} → delivered")
                 return
 
             raise Exception(f"HTTP {resp.status_code}")
 
         except Exception as e:
-            attempt = (event.get("attempt_count") or 0) + 1
-            max_retries = event.get("max_retries", 5)
+            attempt = (row.get("attempt_count") or 0) + 1
+            max_retries = row.get("max_retries", 5)
 
             if attempt < max_retries:
                 print(f"[worker] Event {event_id} retry {attempt}/{max_retries}")
@@ -129,7 +125,6 @@ def deliver_event(event_id: int):
 
     finally:
         db.close()
-
 
 def schedule_retry(db, event_id: int, attempt: int):
     delay = BASE_DELAY_SECONDS * (2 ** (attempt - 1))
