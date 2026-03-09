@@ -2,6 +2,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from threading import Thread
+from starlette.middleware.sessions import SessionMiddleware
+import os
 
 from database import Base, engine
 from health import router as health_router
@@ -36,6 +38,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("JWT_SECRET", "dev-secret")
+)
 # -----------------------------
 # DB Init
 # -----------------------------

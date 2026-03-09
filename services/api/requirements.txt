@@ -12,4 +12,5 @@ httpx
 python-jose[cryptography]
 email-validator
 alembic
+itsdangerous
 
