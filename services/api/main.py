@@ -14,7 +14,7 @@ from route_management import router as routes_management_router
 from auth import router as auth_router
 from ws import ConnectionManager
 from subscriber import start_redis_subscriber
-
+from usage import router as usage_router
 import metrics
 
 # -----------------------------
@@ -58,6 +58,7 @@ app.include_router(health_router)
 app.include_router(relay_router)
 app.include_router(replay_router)
 app.include_router(events_router)
+app.include_router(usage_router)
 
 # -----------------------------
 # WebSocket
