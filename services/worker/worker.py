@@ -9,7 +9,7 @@ from database import SessionLocal
 from redis_client import redis_client
 from retry_policy import next_retry_time
 
-from prometheus_client import start_http_server
+from prometheus_client import start_http_server  # type: ignore[import]
 
 from metrics import (
     events_delivered,
