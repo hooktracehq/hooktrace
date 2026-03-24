@@ -549,7 +549,7 @@ async def relay(token: str, route: str, request: Request):
         webhooks_received.labels(token=token, route=route).inc()
 
         # 🚚 Enqueue worker
-        redis_client.lpush("webhook:queue", str(event.id))
+        redis_client.lpush("webhook:aggregate", str(event.id))
 
         return {"accepted": True}
 
