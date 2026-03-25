@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 
-const launchDate = new Date("2026-03-30T00:00:00Z")
+const launchDate = new Date("2026-04-15T00:00:00Z")
 
 export function LaunchCountdown() {
   const [timeLeft, setTimeLeft] = useState(() => launchDate.getTime() - Date.now())

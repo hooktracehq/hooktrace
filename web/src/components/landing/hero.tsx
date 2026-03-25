@@ -8,6 +8,7 @@ import { motion } from "framer-motion"
 import { event } from "@/lib/gtag"
 import { LaunchCountdown } from "@/components/landing/launch-countdown"
 import { WaitlistForm } from "@/components/landing/waitlist-form"
+// import { Features } from "@/components/landing/features"
 import { useEffect, useRef } from "react"
 
 export function Hero() {
@@ -177,6 +178,7 @@ export function Hero() {
     codilad.dev
   </a>
 </p>
+{/* <Features/> */}
     </section>
   )
 }
