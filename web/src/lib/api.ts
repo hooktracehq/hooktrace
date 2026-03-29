@@ -31,3 +31,37 @@ export async function apiFetch<T>(
 
   return res.json();
 }
+
+
+
+
+
+export async function fetchDeliveryTargets() {
+  return apiFetch('/delivery-targets')
+}
+
+export async function createDeliveryTarget(data: any) {
+  return apiFetch('/delivery-targets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateDeliveryTarget(id: string, data: any) {
+  return apiFetch(`/delivery-targets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteDeliveryTarget(id: string) {
+  return apiFetch(`/delivery-targets/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function testDeliveryTarget(id: string) {
+  return apiFetch(`/delivery-targets/${id}/test`, {
+    method: 'POST',
+  })
+}
