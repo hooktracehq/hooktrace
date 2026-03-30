@@ -10,8 +10,10 @@ from health import router as health_router
 from routes import router as relay_router
 from replay import router as replay_router
 from events import router as events_router
-from api.delivery_targets import router as delivery_targets_router
+from delivery_targets import router as delivery_targets_router
 from route_management import router as routes_management_router
+from webhooks import router as webhooks_router
+from tunnels import router as tunnels_router
 from auth import router as auth_router
 from ws import ConnectionManager
 from subscriber import start_redis_subscriber
@@ -61,6 +63,9 @@ app.include_router(replay_router)
 app.include_router(events_router)
 app.include_router(usage_router)
 app.include_router(delivery_targets_router)
+app.include_router(webhooks_router)
+app.include_router(tunnels_router)
+
 
 # -----------------------------
 # WebSocket

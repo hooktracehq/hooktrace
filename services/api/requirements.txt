@@ -15,4 +15,5 @@ alembic
 itsdangerous
 supabase
 pynacl
+kafka-python
 

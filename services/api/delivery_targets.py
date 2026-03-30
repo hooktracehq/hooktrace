@@ -1,4 +1,4 @@
-# api/delivery_targets.py
+
 """
 Delivery Targets API - Connects frontend UI to backend delivery workers
 """
@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from database import SessionLocal
-from api.auth import get_current_user
+from auth import get_current_user
 
 
 router = APIRouter(prefix="/delivery-targets", tags=["delivery-targets"])
