@@ -15,6 +15,7 @@ from route_management import router as routes_management_router
 from webhooks import router as webhooks_router
 from tunnels import router as tunnels_router
 from auth import router as auth_router
+from aggregation import router as aggregation_router
 from ws import ConnectionManager
 from subscriber import start_redis_subscriber
 from usage import router as usage_router
@@ -65,7 +66,7 @@ app.include_router(usage_router)
 app.include_router(delivery_targets_router)
 app.include_router(webhooks_router)
 app.include_router(tunnels_router)
-
+app.include_router(aggregation_router)
 
 # -----------------------------
 # WebSocket
