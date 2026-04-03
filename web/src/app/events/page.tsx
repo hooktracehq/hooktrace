@@ -33,7 +33,7 @@ export default async function EventsPage({
   searchParams: { status?: string }
 }) {
   const status = searchParams.status
-  const query = status ? `/events?status=${status}` : "/events"
+  const query = status ? `/events?status=${status}` : "/events/"
 
   const res = await apiFetch<{ items: Event[] }>(query)
   const events = res?.items ?? []

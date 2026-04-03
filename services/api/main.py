@@ -91,6 +91,17 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
+
+@app.websocket("/ws/{token}")
+async def websocket_endpoint(websocket: WebSocket, token: str):
+    await manager.connect(websocket, token)
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except:
+        manager.disconnect(token)
+
 # -----------------------------
 # Metrics
 # -----------------------------

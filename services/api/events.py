@@ -17,21 +17,20 @@ def list_events(
     user_id: str = Depends(get_current_user),
 ):
     db = SessionLocal()
+
     try:
         base_query = """
             SELECT
                 e.id,
-                e.token,
-                e.route,
-                e.provider,
+                r.token,
+                r.route,
                 e.status,
                 e.attempt_count,
                 e.last_error,
                 e.created_at
             FROM webhook_events e
             JOIN webhook_routes r
-              ON e.token = r.token
-             AND e.route = r.route
+              ON e.route_id = r.id
             WHERE r.user_id = :user_id
         """
 
@@ -97,8 +96,7 @@ def get_event(
                     e.created_at
                 FROM webhook_events e
                 JOIN webhook_routes r
-                  ON e.token = r.token
-                 AND e.route = r.route
+                  ON e.route_id = r.id
                 WHERE e.id = :id
                   AND r.user_id = :user_id
             """),

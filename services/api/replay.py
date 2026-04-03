@@ -22,9 +22,8 @@ def replay_event(event_id: int):
                     r.prod_target
                 FROM webhook_events e
                 JOIN webhook_routes r
-                  ON e.token = r.token
-                 AND e.route = r.route
-                WHERE e.id = :id
+                  ON e.route_id = r.id
+                  WHERE e.id = :id
             """),
             {"id": event_id},
         ).mappings().first()
