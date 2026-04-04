@@ -20,21 +20,21 @@ def list_events(
 
     try:
         base_query = """
-            SELECT
-                e.id,
-                r.token,
-                r.route,
-                e.status,
-                e.attempt_count,
-                e.last_error,
-                e.provider
-              e.event_type
-                e.created_at
-            FROM webhook_events e
-            JOIN webhook_routes r
-              ON e.route_id = r.id
-            WHERE r.user_id = :user_id
-        """
+    SELECT
+        e.id,
+        r.token,
+        r.route,
+        e.provider,
+        e.event_type,
+        e.status,
+        e.attempt_count,
+        e.last_error,
+        e.created_at
+    FROM webhook_events e
+    JOIN webhook_routes r
+      ON e.route_id = r.id
+    WHERE r.user_id = :user_id
+"""
 
         params = {
             "user_id": user_id,
@@ -82,28 +82,28 @@ def get_event(
     db = SessionLocal()
     try:
         event = db.execute(
-            text("""
-                ELECT
-    e.id,
-    r.token,
-    r.route,
-    e.provider,
-    e.event_type,
-    e.status,
-    e.attempt_count,
-    e.last_error,
-    e.headers,
-    e.payload,
-    e.idempotency_key,
-    e.created_at
-FROM webhook_events e
-JOIN webhook_routes r
-  ON e.route_id = r.id
-WHERE e.id = :id
-  AND r.user_id = :user_id
-            """),
-            {"id": event_id, "user_id": user_id},
-        ).mappings().first()
+    text("""
+        SELECT
+            e.id,
+            r.token,
+            r.route,
+            e.provider,
+            e.event_type,
+            e.status,
+            e.attempt_count,
+            e.last_error,
+            e.headers,
+            e.payload,
+            e.idempotency_key,
+            e.created_at
+        FROM webhook_events e
+        JOIN webhook_routes r
+          ON e.route_id = r.id
+        WHERE e.id = :id
+          AND r.user_id = :user_id
+    """),
+    {"id": event_id, "user_id": user_id},
+).mappings().first()
 
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
@@ -128,8 +128,7 @@ def get_dlq_count(
                 SELECT COUNT(*) as count
                 FROM webhook_events e
                 JOIN webhook_routes r
-                  ON e.token = r.token
-                 AND e.route = r.route
+                 ON e.route_id = r.id
                 WHERE r.user_id = :user_id
                   AND e.status = 'failed'
                   AND e.attempt_count >= 5
