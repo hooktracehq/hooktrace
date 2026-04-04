@@ -64,7 +64,13 @@ class WebhookEvent(Base):
     last_error = Column(Text)
     next_retry_at = Column(DateTime(timezone=True), nullable=True)  
     retry_count = Column(Integer, default=0) 
+    provider = Column(String)
+    event_type = Column(String)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     route = relationship("WebhookRoute", back_populates="events")
+
+
+
+

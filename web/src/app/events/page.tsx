@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic"
 import { apiFetch } from "@/lib/api"
 import { EventsTable } from "@/components/events/event-table"
 import { EventsTabs } from "@/components/events/event-tabs"
+import { ProviderBadge } from "@/components/events/provider-badge"
 import {
   type LucideIcon,
   Activity,
@@ -21,6 +22,7 @@ type Event = {
   id: number
   route: string
   provider?: string
+  event_type?: string
   status: "pending" | "delivered" | "failed"
   attempt_count: number
   created_at: string
@@ -226,7 +228,10 @@ export default async function EventsPage({
         {events.length === 0 ? (
           <EmptyState status={status} />
         ) : (
-          <EventsTable events={events} />
+          <EventsTable events={events} 
+          
+          />
+          
         )}
       </div>
     </div>

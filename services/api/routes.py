@@ -12,8 +12,8 @@ from models import WebhookEvent
 from redis_client import redis_client
 
 from security import verify_signature
-from providers import stripe as stripe_provider
-from providers import github as github_provider
+
+from providers.registry import PROVIDERS
 
 from metrics import (
     webhooks_received,
@@ -57,6 +57,8 @@ async def relay(token: str, route: str, request: Request):
     elif "x-supabase-signature" in request.headers:
         provider = "supabase"
     
+    provider = provider or "generic" # Default to generic provider if no provider is found
+    
 
     db: Session = SessionLocal()
 
@@ -91,21 +93,14 @@ async def relay(token: str, route: str, request: Request):
         #  Signature validation
         if route_secret and route_config["mode"] != "dev":
 
-            if provider == "stripe":
-                if not stripe_provider.verify(request, route_secret):
-                    webhooks_invalid_signature.inc()
-                    return JSONResponse(
-                        status_code=401,
-                        content={"detail": "Invalid Stripe signature"},
-                    )
+            provider_module = PROVIDERS.get(provider)
 
-            elif provider == "github":
-                if not github_provider.verify(request, route_secret):
-                    webhooks_invalid_signature.inc()
-                    return JSONResponse(
-                        status_code=401,
-                        content={"detail": "Invalid GitHub signature"},
-                    )
+            if provider_module and not provider_module.verify(request, route_secret):
+                webhooks_invalid_signature.inc()
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Invalid webhook signature"},
+                )
 
             else:
                 if not signature:
@@ -154,6 +149,16 @@ async def relay(token: str, route: str, request: Request):
             else route_config["prod_target"]
         )
 
+        # Extract provider event type
+        event_type = "unknown"
+        provider_module = PROVIDERS.get(provider)
+
+        if provider_module:
+            try:
+                event_type = provider_module.extract_event_type(payload)
+            except Exception:
+                event_type = "unknown"
+
         if not delivery_target:
             return JSONResponse(
                 status_code=400,
@@ -167,6 +172,8 @@ async def relay(token: str, route: str, request: Request):
             payload=payload,
             status="pending",
             idempotency_key=idempotency_key,
+            event_type=event_type,
+            provider=provider,
         )
 
         db.add(event)

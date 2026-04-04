@@ -1,76 +1,3 @@
-// "use client";
-
-// import Link from "next/link";
-// import { StatusBadge } from "@/components/events/status-badge";
-
-// type Event = {
-//   id: number;
-//   route: string;
-//   provider?: string;
-//   status: string;
-//   attempt_count: number;
-//   created_at: string;
-//   last_error?: string;
-// };
-
-// export function EventsTable({ events }: { events: Event[] }) {
-//   if (!events.length) {
-//     return (
-//       <div className="text-sm text-muted-foreground">
-//         No events yet.
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="rounded-md border">
-//       <table className="w-full text-sm">
-//         <thead className="bg-muted">
-//           <tr>
-//             <th className="p-2 text-left">ID</th>
-//             <th className="p-2 text-left">Route</th>
-//             <th className="p-2 text-left">Provider</th>
-//             <th className="p-2 text-left">Status</th>
-//             <th className="p-2 text-left">Attempts</th>
-//             <th className="p-2 text-left">Created</th>
-//             <th className="p-2 text-right">Actions</th>
-//           </tr>
-//         </thead>
-//         <tbody>
-//           {events.map((event) => (
-//             <tr key={event.id} className="border-t">
-//               <td className="p-2">{event.id}</td>
-//               <td className="p-2">{event.route}</td>
-//               <td className="p-2">{event.provider ?? "-"}</td>
-//               <td className="p-2">
-//                 <StatusBadge status={event.status as "pending" | "delivered" | "failed"} />
-//                 {event.last_error ? (
-//                   <div className="text-xs text-red-500 mt-1 line-clamp-1">
-//                     {event.last_error}
-//                   </div>
-//                 ) : null}
-//               </td>
-//               <td className="p-2">{event.attempt_count}</td>
-//               <td className="p-2">
-//                 {new Date(event.created_at).toLocaleString()}
-//               </td>
-//               <td className="p-2 text-right">
-//                 <Link
-//                   href={`/events/${event.id}`}
-//                   className="text-blue-600 hover:underline"
-//                 >
-//                   View
-//                 </Link>
-//               </td>
-//             </tr>
-//           ))}
-//         </tbody>
-//       </table>
-//     </div>
-//   );
-// }
-
-
 
 
 "use client"
@@ -79,6 +6,7 @@ import Link from "next/link"
 import { motion, type Variants } from "framer-motion"
 import { Eye, MoreHorizontal, RotateCcw } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
+import { ProviderBadge } from "@/components/events/provider-badge"
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 
@@ -99,6 +27,7 @@ type Event = {
   id: number
   route: string
   provider?: string
+  event_type?: string
   status: "pending" | "delivered" | "failed"
   attempt_count: number
   created_at: string
@@ -134,6 +63,7 @@ export function EventsTable({ events }: { events: Event[] }) {
             <TableHead>Attempts</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="text-right" />
+          
           </TableRow>
         </TableHeader>
 
@@ -158,16 +88,25 @@ export function EventsTable({ events }: { events: Event[] }) {
                 </TableCell>
 
                 {/* Route + provider */}
-                <TableCell>
-                  <div className="space-y-0.5">
-                    <p className="font-mono text-xs">
-                      {event.route}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {event.provider ?? "generic"}
-                    </p>
-                  </div>
-                </TableCell>
+                {/* Provider */}
+<TableCell>
+  <ProviderBadge provider={event.provider} />
+</TableCell>
+
+{/* Event Type */}
+<TableCell>
+  <div className="space-y-0.5">
+    <p className="font-mono text-xs">
+
+    <Link href={`/events/${event.id}`}>
+  {event.event_type || "unknown"}
+</Link>
+    </p>
+    <p className="text-xs text-muted-foreground">
+      {event.route}
+    </p>
+  </div>
+</TableCell>
 
                 {/* Status */}
                 <TableCell>

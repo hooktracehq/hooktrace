@@ -27,6 +27,8 @@ def list_events(
                 e.status,
                 e.attempt_count,
                 e.last_error,
+                e.provider
+              e.event_type
                 e.created_at
             FROM webhook_events e
             JOIN webhook_routes r
@@ -81,24 +83,24 @@ def get_event(
     try:
         event = db.execute(
             text("""
-                SELECT
-                    e.id,
-                    e.token,
-                    e.route,
-                    e.provider,
-                    e.status,
-                    e.attempt_count,
-                    e.last_error,
-                    e.headers,
-                    e.payload,
-                    e.delivery_target,
-                    e.idempotency_key,
-                    e.created_at
-                FROM webhook_events e
-                JOIN webhook_routes r
-                  ON e.route_id = r.id
-                WHERE e.id = :id
-                  AND r.user_id = :user_id
+                ELECT
+    e.id,
+    r.token,
+    r.route,
+    e.provider,
+    e.event_type,
+    e.status,
+    e.attempt_count,
+    e.last_error,
+    e.headers,
+    e.payload,
+    e.idempotency_key,
+    e.created_at
+FROM webhook_events e
+JOIN webhook_routes r
+  ON e.route_id = r.id
+WHERE e.id = :id
+  AND r.user_id = :user_id
             """),
             {"id": event_id, "user_id": user_id},
         ).mappings().first()
