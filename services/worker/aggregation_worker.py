@@ -528,6 +528,45 @@ class AggregationWorker:
                 time.sleep(1)
 
 
+
+
+
+def load_aggregation_rules():
+    db = SessionLocal()
+
+    try:
+        rules = db.execute(
+            text("""
+                SELECT
+                    id,
+                    provider,
+                    event_patterns,
+                    mode,
+                    window_ms,
+                    max_batch_size,
+                    timeout_ms,
+                    max_events_per_second,
+                    deduplicate,
+                    deduplication_key
+                FROM aggregation_rules
+                WHERE enabled = TRUE
+            """)
+        ).mappings().all()
+
+        return [dict(r) for r in rules]
+
+    finally:
+        db.close()
+
+
+
+
+
+
+
+
+
+
 def main():
     """Start the enhanced aggregation worker"""
     worker = AggregationWorker()

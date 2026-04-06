@@ -101,53 +101,18 @@ export default async function BulkAggregationPage() {
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now()
 
-  // Mock data (replace with DB query later)
-  const aggregationRules: AggregationRule[] = [
+  // Fetching the Aggregation API
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/aggregation`,
     {
-      id: "rule-1",
-      name: "Stripe Payment Events",
-      provider: "stripe",
-      eventPatterns: ["payment_intent.*", "charge.*"],
-      enabled: true,
-      config: {
-        mode: "time_window",
-        windowMs: 5000,
-        maxBatchSize: 50,
-        deduplicate: true,
-        deduplicationKey: "id",
-      },
-      stats: {
-        eventsProcessed: 1247,
-        batchesCreated: 89,
-        averageBatchSize: 14,
-        duplicatesSkipped: 23,
-      },
-      createdAt: new Date(now - 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days ago
-      lastTriggered: new Date(now - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-    },
-    {
-      id: "rule-2",
-      name: "GitHub Push Events",
-      provider: "github",
-      eventPatterns: ["push"],
-      enabled: true,
-      config: {
-        mode: "count",
-        maxBatchSize: 10,
-        timeoutMs: 10000,
-        deduplicate: false,
-      },
-      stats: {
-        eventsProcessed: 432,
-        batchesCreated: 44,
-        averageBatchSize: 9.8,
-        duplicatesSkipped: 0,
-      },
-      createdAt: new Date(now - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 days ago
-      lastTriggered: new Date(now - 1000 * 60 * 5).toISOString(), // 5 minutes ago
-    },
-  ]
-
+      credentials: "include",
+      cache: "no-store",
+    }
+  )
+  
+  const data = await res.json()
+  
+  const aggregationRules: AggregationRule[] = data.items || []
   return (
     <BulkAggregationClient
       user={user}
