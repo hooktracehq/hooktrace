@@ -15,7 +15,6 @@ from sqlalchemy import text
 from .database import SessionLocal
 from .auth import get_current_user
 
-
 router = APIRouter(prefix="/delivery-targets", tags=["delivery-targets"])
 
 
@@ -25,19 +24,20 @@ router = APIRouter(prefix="/delivery-targets", tags=["delivery-targets"])
 
 class DeliveryTargetConfig(BaseModel):
     """Dynamic config based on target type"""
+
     # HTTP
     url: Optional[str] = None
     method: Optional[str] = None
     headers: Optional[dict] = None
     timeout: Optional[int] = None
-    
+
     # SQS
     queueUrl: Optional[str] = None
     region: Optional[str] = None
     accessKeyId: Optional[str] = None
     secretAccessKey: Optional[str] = None
     messageGroupId: Optional[str] = None
-    
+
     # Kafka
     brokers: Optional[str] = None
     topic: Optional[str] = None
@@ -45,30 +45,30 @@ class DeliveryTargetConfig(BaseModel):
     saslMechanism: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
-    
+
     # RabbitMQ
     host: Optional[str] = None
     exchange: Optional[str] = None
     routingKey: Optional[str] = None
-    
+
     # Redis
     redisUrl: Optional[str] = None
     channel: Optional[str] = None
-    
+
     # gRPC
     grpcUrl: Optional[str] = None
     service: Optional[str] = None
-    
+
     # Custom Webhook
     secret: Optional[str] = None
     transform: Optional[str] = None
     retries: Optional[int] = None
-    
+
     # Email
     recipients: Optional[str] = None
     subject: Optional[str] = None
     includePayload: Optional[bool] = None
-    
+
     # Slack
     webhookUrl: Optional[str] = None
     channel: Optional[str] = None
@@ -77,9 +77,9 @@ class DeliveryTargetConfig(BaseModel):
 
 class CreateDeliveryTargetRequest(BaseModel):
     name: str
-    type: str  # http, sqs, kafka, rabbitmq, redis, grpc, webhook, email, slack
+    type: str
     config: DeliveryTargetConfig
-    providers: List[str] = []  # Which providers to route (empty = all)
+    providers: List[str] = []
 
 
 class UpdateDeliveryTargetRequest(BaseModel):
@@ -103,7 +103,7 @@ class DeliveryTargetResponse(BaseModel):
 
 
 # -----------------------------
-# Database Setup (Run this once)
+# Database Setup (Run once)
 # -----------------------------
 
 CREATE_TABLE_SQL = """
@@ -133,15 +133,13 @@ CREATE INDEX IF NOT EXISTS idx_delivery_targets_enabled ON delivery_targets(enab
 
 @router.get("")
 def list_delivery_targets(user_id: str = Depends(get_current_user)):
-    """List all delivery targets for the current user"""
     db = SessionLocal()
     try:
         targets = db.execute(
             text("""
-                SELECT 
-                    id, name, type, config, enabled, 
-                    created_at, last_used, success_count, 
-                    error_count, providers
+                SELECT id, name, type, config, enabled,
+                       created_at, last_used, success_count,
+                       error_count, providers
                 FROM delivery_targets
                 WHERE user_id = :user_id
                 ORDER BY created_at DESC
@@ -155,13 +153,13 @@ def list_delivery_targets(user_id: str = Depends(get_current_user)):
                     "id": str(row[0]),
                     "name": row[1],
                     "type": row[2],
-                    "config": row[3] if isinstance(row[3],dict) else json.loads(row[3]),
+                    "config": row[3] if isinstance(row[3], dict) else json.loads(row[3]),
                     "enabled": row[4],
                     "createdAt": row[5].isoformat() if row[5] else None,
                     "lastUsed": row[6].isoformat() if row[6] else None,
                     "successCount": row[7],
                     "errorCount": row[8],
-                    "providers": row[9] if isinstance (row[9],list) else json.loads(row[9]),
+                    "providers": row[9] if isinstance(row[9], list) else json.loads(row[9]),
                 }
                 for row in targets
             ]
@@ -171,19 +169,14 @@ def list_delivery_targets(user_id: str = Depends(get_current_user)):
 
 
 @router.post("")
-def create_delivery_target(
-    request: CreateDeliveryTargetRequest,
-    user_id: str = Depends(get_current_user)
-):
-    """Create a new delivery target"""
+def create_delivery_target(request: CreateDeliveryTargetRequest, user_id: str = Depends(get_current_user)):
     db = SessionLocal()
     try:
         target_id = str(uuid.uuid4())
 
         db.execute(
             text("""
-                INSERT INTO delivery_targets 
-                (id, user_id, name, type, config, providers)
+                INSERT INTO delivery_targets (id, user_id, name, type, config, providers)
                 VALUES (:id, :user_id, :name, :type, :config, :providers)
             """),
             {
@@ -209,6 +202,7 @@ def create_delivery_target(
             "errorCount": 0,
             "providers": request.providers,
         }
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -217,19 +211,14 @@ def create_delivery_target(
 
 
 @router.get("/{target_id}")
-def get_delivery_target(
-    target_id: str,
-    user_id: str = Depends(get_current_user)
-):
-    """Get a specific delivery target"""
+def get_delivery_target(target_id: str, user_id: str = Depends(get_current_user)):
     db = SessionLocal()
     try:
         target = db.execute(
             text("""
-                SELECT 
-                    id, name, type, config, enabled,
-                    created_at, last_used, success_count,
-                    error_count, providers
+                SELECT id, name, type, config, enabled,
+                       created_at, last_used, success_count,
+                       error_count, providers
                 FROM delivery_targets
                 WHERE id = :target_id AND user_id = :user_id
             """),
@@ -243,13 +232,13 @@ def get_delivery_target(
             "id": str(target[0]),
             "name": target[1],
             "type": target[2],
-            "config": target[3],
+            "config": target[3] if isinstance(target[3], dict) else json.loads(target[3]),
             "enabled": target[4],
             "createdAt": target[5].isoformat() if target[5] else None,
             "lastUsed": target[6].isoformat() if target[6] else None,
             "successCount": target[7],
             "errorCount": target[8],
-            "providers": target[9] if target[9] else [],
+            "providers": target[9] if isinstance(target[9], list) else json.loads(target[9] or "[]"),
         }
     finally:
         db.close()
@@ -261,10 +250,8 @@ def update_delivery_target(
     request: UpdateDeliveryTargetRequest,
     user_id: str = Depends(get_current_user)
 ):
-    """Update a delivery target"""
     db = SessionLocal()
     try:
-        # Check if target exists
         existing = db.execute(
             text("SELECT id FROM delivery_targets WHERE id = :id AND user_id = :user_id"),
             {"id": target_id, "user_id": user_id}
@@ -273,7 +260,6 @@ def update_delivery_target(
         if not existing:
             raise HTTPException(status_code=404, detail="Target not found")
 
-        # Build update query dynamically
         updates = []
         params = {"id": target_id, "user_id": user_id}
 
@@ -295,7 +281,7 @@ def update_delivery_target(
 
         if updates:
             updates.append("updated_at = CURRENT_TIMESTAMP")
-            
+
             query = f"""
                 UPDATE delivery_targets
                 SET {', '.join(updates)}
@@ -304,7 +290,6 @@ def update_delivery_target(
             db.execute(text(query), params)
             db.commit()
 
-        # Return updated target
         return get_delivery_target(target_id, user_id)
 
     except HTTPException:
@@ -317,11 +302,7 @@ def update_delivery_target(
 
 
 @router.delete("/{target_id}")
-def delete_delivery_target(
-    target_id: str,
-    user_id: str = Depends(get_current_user)
-):
-    """Delete a delivery target"""
+def delete_delivery_target(target_id: str, user_id: str = Depends(get_current_user)):
     db = SessionLocal()
     try:
         result = db.execute(
@@ -342,14 +323,9 @@ def delete_delivery_target(
 
 
 @router.post("/{target_id}/test")
-def test_delivery_target(
-    target_id: str,
-    user_id: str = Depends(get_current_user)
-):
-    """Send a test webhook to this target"""
+def test_delivery_target(target_id: str, user_id: str = Depends(get_current_user)):
     db = SessionLocal()
     try:
-        # Get target config
         target = db.execute(
             text("""
                 SELECT type, config, enabled
@@ -362,13 +338,12 @@ def test_delivery_target(
         if not target:
             raise HTTPException(status_code=404, detail="Target not found")
 
-        if not target[2]:  # enabled
+        if not target[2]:
             raise HTTPException(status_code=400, detail="Target is disabled")
 
         target_type = target[0]
-        config = target[1]
+        config = target[1] if isinstance(target[1], dict) else json.loads(target[1])
 
-        # Create test payload
         test_payload = {
             "id": "test_" + str(uuid.uuid4()),
             "event": "test.webhook",
@@ -380,66 +355,72 @@ def test_delivery_target(
             }
         }
 
-        # Import and use your existing delivery workers
         try:
             if target_type == "http":
                 from services.worker.delivery.http import deliver_http
                 result = deliver_http(config, test_payload)
-                
+
             elif target_type == "sqs":
                 from services.worker.delivery.sqs import deliver_sqs
                 result = deliver_sqs(config, test_payload)
-                
+
             elif target_type == "kafka":
                 from services.worker.delivery.kafka import deliver_kafka
                 result = deliver_kafka(config, test_payload)
-                
+
             elif target_type == "rabbitmq":
                 from services.worker.delivery.rabbitmq import deliver_rabbitmq
                 result = deliver_rabbitmq(config, test_payload)
-                
+
             elif target_type == "redis":
                 from services.worker.delivery.redis import deliver_redis
                 result = deliver_redis(config, test_payload)
-                
+
             elif target_type == "grpc":
                 from services.worker.delivery.grpc import deliver_grpc
                 result = deliver_grpc(config, test_payload)
-                
+
             else:
                 raise HTTPException(status_code=400, detail=f"Unsupported target type: {target_type}")
 
-            return {
-                "success": True,
-                "result": result,
-                "message": "Test webhook sent successfully"
-            }
+            db.execute(
+                text("""
+                    UPDATE delivery_targets
+                    SET success_count = success_count + 1,
+                        last_used = CURRENT_TIMESTAMP
+                    WHERE id = :id
+                """),
+                {"id": target_id}
+            )
+            db.commit()
+
+            return {"success": True, "result": result, "message": "Test webhook sent successfully"}
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "message": "Test webhook failed"
-            }
+            db.execute(
+                text("""
+                    UPDATE delivery_targets
+                    SET error_count = error_count + 1,
+                        last_used = CURRENT_TIMESTAMP
+                    WHERE id = :id
+                """),
+                {"id": target_id}
+            )
+            db.commit()
+
+            return {"success": False, "error": str(e)}
 
     finally:
         db.close()
 
 
 @router.get("/{target_id}/stats")
-def get_target_stats(
-    target_id: str,
-    user_id: str = Depends(get_current_user)
-):
-    """Get delivery statistics for a target"""
+def get_target_stats(target_id: str, user_id: str = Depends(get_current_user)):
     db = SessionLocal()
     try:
         stats = db.execute(
             text("""
-                SELECT 
-                    success_count,
-                    error_count,
-                    last_used
+                SELECT success_count, error_count, last_used
                 FROM delivery_targets
                 WHERE id = :id AND user_id = :user_id
             """),
@@ -461,3 +442,4 @@ def get_target_stats(
         }
     finally:
         db.close()
+
