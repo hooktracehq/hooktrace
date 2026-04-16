@@ -308,15 +308,7 @@ jobs:
       - name: Send test webhook
         run: |
           API_CONTAINER=$(docker ps --filter "name=hooktrace-api" --format "{{.ID}}" | head -n 1)
-          docker exec $API_CONTAINER python -c "
-          import requests
-          res = requests.post(
-            'http://localhost:3001/webhook',
-            json={'event': 'ci_test', 'data': {'source': 'github-actions'}}
-          )
-          print(res.status_code, res.text)
-          assert res.status_code < 400
-          "
+          docker exec $API_CONTAINER python -c "import requests; res = requests.post('http://localhost:3001/webhook', json={'event':'ci_test','data':{'source':'github-actions'}}); print(res.status_code, res.text); assert res.status_code < 400"
 
       - name: Wait for processing
         run: sleep 5
