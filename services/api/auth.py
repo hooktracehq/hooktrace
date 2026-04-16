@@ -5,7 +5,7 @@
 from datetime import datetime, timedelta
 import os
 import uuid
-
+from fastapi import Header
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Cookie, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -59,15 +59,28 @@ def create_token(user_id: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
 
-def get_current_user(access_token: str = Cookie(None)) -> str:
-    if not access_token:
+def get_current_user(
+    access_token: str = Cookie(None),
+    authorization: str = Header(None)
+) -> str:
+
+    token = None
+
+    # 1. Check Authorization header
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+
+    # 2. Fallback to cookie
+    elif access_token:
+        token = access_token
+
+    if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        payload = jwt.decode(access_token, JWT_SECRET, algorithms=[JWT_ALGO])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
         user_id = payload["sub"]
 
-        #  ONLY CHECK USER EXISTS (NO INSERT)
         db = SessionLocal()
         try:
             user = db.execute(
