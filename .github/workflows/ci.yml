@@ -244,78 +244,98 @@ jobs:
   infra-check:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: hooktrace
-          POSTGRES_PASSWORD: hooktrace_test
-          POSTGRES_DB: hooktrace_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check Docker Compose config
-        run: docker compose config
+      # -------------------------------
+      # BUILD & START SERVICES
+      # -------------------------------
 
-      - name: Wait for services
-        run: sleep 5
+      - name: Build and start all services
+        run: |
+          docker compose up -d --build postgres redis api
+        env:
+          DATABASE_URL: postgresql://hooktrace:hooktrace_dev@postgres:5432/hooktrace
+          REDIS_URL: redis://redis:6379
+
+      - name: Wait for Postgres to be healthy
+        run: |
+          echo "Waiting for Postgres..."
+          for i in $(seq 1 20); do
+            docker exec hooktrace-db pg_isready -U hooktrace && break
+            echo "  attempt $i/20 — not ready yet"
+            sleep 3
+          done
+
+      - name: Wait for Redis to be healthy
+        run: |
+          echo "Waiting for Redis..."
+          for i in $(seq 1 20); do
+            docker exec hooktrace-redis redis-cli ping | grep -q PONG && break
+            echo "  attempt $i/20 — not ready yet"
+            sleep 3
+          done
+
+      - name: Wait for API to be healthy
+        run: |
+          echo "Waiting for API..."
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:3001/health && break
+            echo "  attempt $i/20 — not ready yet"
+            sleep 5
+          done
+
+      # -------------------------------
+      # VERIFY SERVICES
+      # -------------------------------
 
       - name: Verify Postgres is reachable
         run: |
-          POSTGRES_CONTAINER=$(docker ps --filter "ancestor=postgres:16-alpine" --format "{{.ID}}" | head -n 1)
-          docker exec $POSTGRES_CONTAINER psql -U hooktrace -d hooktrace_test -c "SELECT 1;"
+          docker exec hooktrace-db psql -U hooktrace -d hooktrace -c "SELECT 1;"
 
       - name: Verify Redis is reachable
         run: |
-          REDIS_CONTAINER=$(docker ps --filter "ancestor=redis:7-alpine" --format "{{.ID}}" | head -n 1)
-          docker exec $REDIS_CONTAINER redis-cli ping
+          docker exec hooktrace-redis redis-cli ping
+
+      - name: Debug API logs (pre-test)
+        run: docker logs hooktrace-api
 
       # -------------------------------
       # SYSTEM INTEGRATION TEST
       # -------------------------------
 
-      - name: Start API
-        run: |
-          docker compose up -d api --no-deps
-          sleep 15
-        env:
-          DATABASE_URL: postgresql://hooktrace:hooktrace_test@host.docker.internal:5432/hooktrace_test
-          REDIS_URL: redis://host.docker.internal:6379
-
-      - name: Debug API logs
-        run: |
-          docker ps -a
-          docker logs hooktrace-api || true
-
       - name: Send test webhook
         run: |
-          API_CONTAINER=$(docker ps --filter "name=hooktrace-api" --format "{{.ID}}" | head -n 1)
-          docker exec $API_CONTAINER python -c "import requests; res = requests.post('http://localhost:3001/webhook', json={'event':'ci_test','data':{'source':'github-actions'}}); print(res.status_code, res.text); assert res.status_code < 400"
+          RESPONSE=$(curl -s -o /tmp/webhook_response.txt -w "%{http_code}" \
+            -X POST http://localhost:3001/webhook \
+            -H "Content-Type: application/json" \
+            -d '{"event":"ci_test","data":{"source":"github-actions"}}')
+          echo "Response code: $RESPONSE"
+          echo "Response body: $(cat /tmp/webhook_response.txt)"
+          if [ "$RESPONSE" -ge 400 ]; then
+            echo "Webhook failed with status $RESPONSE"
+            exit 1
+          fi
 
       - name: Wait for processing
         run: sleep 5
 
       - name: Verify webhook stored in DB
         run: |
-          POSTGRES_CONTAINER=$(docker ps --filter "ancestor=postgres:16-alpine" --format "{{.ID}}" | head -n 1)
-          docker exec $POSTGRES_CONTAINER psql -U hooktrace -d hooktrace_test -c "
-            SELECT * FROM events ORDER BY created_at DESC LIMIT 1;
-          "
+          docker exec hooktrace-db psql -U hooktrace -d hooktrace -c \
+            "SELECT * FROM events ORDER BY created_at DESC LIMIT 1;"
+
+      # -------------------------------
+      # TEARDOWN
+      # -------------------------------
+
+      - name: Show all container logs on failure
+        if: failure()
+        run: |
+          echo "=== API logs ===" && docker logs hooktrace-api || true
+          echo "=== DB logs ===" && docker logs hooktrace-db || true
+          echo "=== Redis logs ===" && docker logs hooktrace-redis || true
+
+      - name: Stop all services
+        if: always()
+        run: docker compose down -v
