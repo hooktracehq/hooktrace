@@ -232,7 +232,6 @@
 
 
 
-
 name: CI Pipeline
 
 on:
@@ -276,27 +275,23 @@ jobs:
       - name: Check Docker Compose config
         run: docker compose config
 
-      # Wait for services
       - name: Wait for services
         run: sleep 5
 
-      # Verify Postgres
       - name: Verify Postgres is reachable
         run: |
           POSTGRES_CONTAINER=$(docker ps --filter "ancestor=postgres:16-alpine" --format "{{.ID}}" | head -n 1)
           docker exec $POSTGRES_CONTAINER psql -U hooktrace -d hooktrace_test -c "SELECT 1;"
 
-      # Verify Redis
       - name: Verify Redis is reachable
         run: |
           REDIS_CONTAINER=$(docker ps --filter "ancestor=redis:7-alpine" --format "{{.ID}}" | head -n 1)
           docker exec $REDIS_CONTAINER redis-cli ping
 
       # -------------------------------
-      # 🔥 SYSTEM INTEGRATION TEST
+      # SYSTEM INTEGRATION TEST
       # -------------------------------
 
-      # Start ONLY API with correct env
       - name: Start API
         run: |
           docker compose up -d api --no-deps
@@ -305,35 +300,30 @@ jobs:
           DATABASE_URL: postgresql://hooktrace:hooktrace_test@host.docker.internal:5432/hooktrace_test
           REDIS_URL: redis://host.docker.internal:6379
 
-      # Debug logs
       - name: Debug API logs
         run: |
           docker ps -a
           docker logs hooktrace-api || true
 
-      # ✅ Send webhook using Python (no curl dependency)
       - name: Send test webhook
         run: |
           API_CONTAINER=$(docker ps --filter "name=hooktrace-api" --format "{{.ID}}" | head -n 1)
           docker exec $API_CONTAINER python -c "
-import requests
-res = requests.post(
-    'http://localhost:3001/webhook',
-    json={'event':'ci_test','data':{'source':'github-actions'}}
-)
-print(res.status_code, res.text)
-assert res.status_code < 400
-"
+          import requests
+          res = requests.post(
+            'http://localhost:3001/webhook',
+            json={'event': 'ci_test', 'data': {'source': 'github-actions'}}
+          )
+          print(res.status_code, res.text)
+          assert res.status_code < 400
+          "
 
-      # Wait for processing
       - name: Wait for processing
         run: sleep 5
 
-      # Verify webhook stored in DB
       - name: Verify webhook stored in DB
         run: |
           POSTGRES_CONTAINER=$(docker ps --filter "ancestor=postgres:16-alpine" --format "{{.ID}}" | head -n 1)
-          
           docker exec $POSTGRES_CONTAINER psql -U hooktrace -d hooktrace_test -c "
-          SELECT * FROM events ORDER BY created_at DESC LIMIT 1;
+            SELECT * FROM events ORDER BY created_at DESC LIMIT 1;
           "
