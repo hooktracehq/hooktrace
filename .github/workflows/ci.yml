@@ -234,8 +234,6 @@
 
 
 
-
-
 name: CI Pipeline
 
 on:
@@ -300,14 +298,18 @@ jobs:
           docker exec $REDIS_CONTAINER redis-cli ping
 
       # -------------------------------
-      #   SYSTEM INTEGRATION TEST
+      #  SYSTEM INTEGRATION TEST
       # -------------------------------
 
-      # Start your API (from docker-compose)
+      # Start ONLY API (avoid port conflicts)
       - name: Start API
         run: |
-          docker compose up -d api
-          sleep 10
+          docker compose up -d api --no-deps
+          sleep 15
+
+      # Debug (optional but useful if something fails)
+      - name: Show running containers
+        run: docker ps
 
       # Send a test webhook
       - name: Send test webhook
