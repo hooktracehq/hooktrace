@@ -233,7 +233,6 @@
 
 
 
-
 name: CI Pipeline
 
 on:
@@ -271,10 +270,6 @@ jobs:
         ports:
           - 6379:6379
 
-    env:
-      DATABASE_URL: postgresql://hooktrace:hooktrace_test@localhost:5432/hooktrace_test
-      REDIS_URL: redis://localhost:6379
-
     steps:
       - uses: actions/checkout@v4
 
@@ -301,15 +296,20 @@ jobs:
       #  SYSTEM INTEGRATION TEST
       # -------------------------------
 
-      # Start ONLY API (avoid port conflicts)
+      # Start ONLY API with correct env (THIS IS THE FIX)
       - name: Start API
         run: |
           docker compose up -d api --no-deps
           sleep 15
+        env:
+          DATABASE_URL: postgresql://hooktrace:hooktrace_test@host.docker.internal:5432/hooktrace_test
+          REDIS_URL: redis://host.docker.internal:6379
 
-      # Debug (optional but useful if something fails)
-      - name: Show running containers
-        run: docker ps
+      # Debug logs (very useful)
+      - name: Debug API logs
+        run: |
+          docker ps -a
+          docker logs hooktrace-api || true
 
       # Send a test webhook
       - name: Send test webhook
@@ -318,7 +318,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"event":"ci_test","data":{"source":"github-actions"}}'
 
-      # Wait for processing (important if async)
+      # Wait for processing
       - name: Wait for processing
         run: sleep 5
 
