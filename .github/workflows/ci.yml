@@ -307,14 +307,14 @@ jobs:
         run: |
           curl -s -X POST http://localhost:3001/auth/register \
             -H "Content-Type: application/json" \
-            -d '{"email":"ci@example.test","password":"ci_test_pass"}' \
+            -d '{"email":"ci@example.com","password":"ci_test_pass"}' \
             | python3 -m json.tool || true
 
       - name: Login and get token
         run: |
           RESP=$(curl -s -X POST http://localhost:3001/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"ci@example.test","password":"ci_test_pass"}')
+            -d '{"email":"ci@example.com","password":"ci_test_pass"}')
 
           echo "Login response: $RESP"
 
