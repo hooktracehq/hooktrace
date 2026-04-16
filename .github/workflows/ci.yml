@@ -332,7 +332,7 @@ jobs:
           RESP=$(curl -s -X POST http://localhost:3001/routes/ \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $TOKEN" \
-            -d '{"name":"ci-test-route"}')
+            -d '{"route":"ci-test-route"}')
 
           echo "Create route response: $RESP"
 
