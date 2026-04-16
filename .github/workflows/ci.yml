@@ -314,7 +314,7 @@ jobs:
       # Send a test webhook
       - name: Send test webhook
         run: |
-          curl -X POST http://localhost:3000/webhook \
+          curl -X POST http://localhost:3001/webhook \
             -H "Content-Type: application/json" \
             -d '{"event":"ci_test","data":{"source":"github-actions"}}'
 
