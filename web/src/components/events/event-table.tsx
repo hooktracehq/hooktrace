@@ -1,13 +1,13 @@
-
-
 "use client"
 
 import Link from "next/link"
-import { motion, type Variants } from "framer-motion"
+import { motion } from "framer-motion"
 import { Eye, MoreHorizontal, RotateCcw } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
-import { ProviderBadge } from "@/components/events/provider-badge"
+import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
+import { ProviderBadge } from "@/components/events/provider-badge"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 
 import {
@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { StatusBadge } from "@/components/events/status-badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 /* ---------------- Types ---------------- */
 
@@ -28,25 +28,25 @@ type Event = {
   route: string
   provider?: string
   event_type?: string
-  status: "pending" | "delivered" | "failed"
+  status: "pending" | "delivered" | "failed" | "retrying"
   attempt_count: number
   created_at: string
   last_error?: string
 }
 
-/* ---------------- Motion ---------------- */
-
-const rowFade: Variants = {
-  hidden: { opacity: 0, y: 6 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+type Props = {
+  events: Event[]
+  newIds?: Set<number>
 }
 
 /* ---------------- Component ---------------- */
 
-export function EventsTable({ events }: { events: Event[] }) {
+export function EventsTable({ events, newIds }: Props) {
+  const router = useRouter()
+
   if (!events.length) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+      <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground font-medium">
         No webhook events yet.
       </div>
     )
@@ -63,50 +63,53 @@ export function EventsTable({ events }: { events: Event[] }) {
             <TableHead>Attempts</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="text-right" />
-          
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {events.map((event) => {
-            const createdAt = new Date(event.created_at)
+            const isNew = newIds?.has(event.id)
+
+            //  SAFE DATE HANDLING
+            const createdAt = event.created_at
+              ? new Date(event.created_at)
+              : null
+
+            const isValidDate =
+              createdAt instanceof Date &&
+              !isNaN(createdAt.getTime())
 
             return (
               <motion.tr
                 key={event.id}
-                variants={rowFade}
-                initial="hidden"
-                animate="show"
-                className="group cursor-pointer border-t transition-colors hover:bg-muted/30"
-                onClick={() => {
-                  window.location.href = `/events/${event.id}`
-                }}
+                initial={isNew ? { opacity: 0, y: -10 } : false}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "group cursor-pointer border-t border-border/60 transition-all duration-200 hover:bg-muted/60 hover:scale-[1.002]",
+                  isNew && "bg-primary/10"
+                )}
+                onClick={() => router.push(`/events/${event.id}`)}
               >
                 {/* ID */}
                 <TableCell className="font-medium">
                   #{event.id}
                 </TableCell>
 
-                {/* Route + provider */}
-                {/* Provider */}
-<TableCell>
-  <ProviderBadge provider={event.provider} />
-</TableCell>
+                {/* Route + Provider */}
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <ProviderBadge provider={event.provider} />
 
-{/* Event Type */}
-<TableCell>
-  <div className="space-y-0.5">
-    <p className="font-mono text-xs">
-
-    <Link href={`/events/${event.id}`}>
-  {event.event_type || "unknown"}
-</Link>
-    </p>
-    <p className="text-xs text-muted-foreground">
-      {event.route}
-    </p>
-  </div>
-</TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">
+                        {event.event_type || "unknown"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {event.route}
+                      </span>
+                    </div>
+                  </div>
+                </TableCell>
 
                 {/* Status */}
                 <TableCell>
@@ -121,17 +124,23 @@ export function EventsTable({ events }: { events: Event[] }) {
                 </TableCell>
 
                 {/* Attempts */}
-                <TableCell>
-                  {event.attempt_count}
+                <TableCell className="text-sm text-muted-foreground font-medium">
+                  {event.attempt_count || 0}
                 </TableCell>
 
-                {/* Created */}
+                {/* Created (FIXED) */}
                 <TableCell>
                   <time
-                    className="text-sm text-muted-foreground"
-                    title={format(createdAt, "yyyy-MM-dd HH:mm:ss")}
+                    className="text-sm text-muted-foreground font-medium"
+                    title={
+                      isValidDate
+                        ? format(createdAt, "yyyy-MM-dd HH:mm:ss")
+                        : "Invalid date"
+                    }
                   >
-                    {formatDistanceToNow(createdAt, { addSuffix: true })}
+                    {isValidDate
+                      ? formatDistanceToNow(createdAt, { addSuffix: true })
+                      : "—"}
                   </time>
                 </TableCell>
 

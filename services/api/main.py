@@ -161,7 +161,7 @@ from .aggregation import router as aggregation_router
 from .usage import router as usage_router
 
 # Websocket
-from .ws import ConnectionManager
+from .ws import manager
 from .subscriber import start_redis_subscriber
 
 from  . import metrics
@@ -218,7 +218,7 @@ app.include_router(aggregation_router)
 # WebSocket
 # -----------------------------
 
-manager = ConnectionManager()
+
 
 @app.on_event("startup")
 def start_subscriber():
@@ -231,12 +231,12 @@ def start_subscriber():
 
 @app.websocket("/ws/events")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+    await manager.connect(websocket, token='global')
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, token='global')
 
 
 @app.websocket("/ws/{token}")
@@ -247,7 +247,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         while True:
             await websocket.receive_text()
     except:
-        manager.disconnect(token)
+        manager.disconnect(websocket,token)
 
 
 # -----------------------------

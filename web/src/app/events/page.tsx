@@ -1,10 +1,11 @@
 
 export const dynamic = "force-dynamic"
 
-import { apiFetch } from "@/lib/api"
-import { EventsTable } from "@/components/events/event-table"
+import { serverApiFetch } from "@/lib/server-api"
+import { EventsLiveWrapper } from "@/app/events/clientWrapper"
 import { EventsTabs } from "@/components/events/event-tabs"
-import { ProviderBadge } from "@/components/events/provider-badge"
+
+import { StatCard } from "@/components/ui/stat-card"
 import {
   type LucideIcon,
   Activity,
@@ -29,6 +30,10 @@ type Event = {
   last_error?: string
 }
 
+
+
+
+
 export default async function EventsPage({
   searchParams,
 }: {
@@ -37,7 +42,7 @@ export default async function EventsPage({
   const status = searchParams.status
   const query = status ? `/events?status=${status}` : "/events/"
 
-  const res = await apiFetch<{ items: Event[] }>(query)
+  const res = await serverApiFetch<{ items: Event[] }>(query)
   const events = res?.items ?? []
 
   // Calculate stats for all events view
@@ -129,31 +134,31 @@ export default async function EventsPage({
               icon={Activity}
               label="Total Events"
               value={totalEvents}
-              color="blue"
+              
             />
             <StatCard
               icon={CheckCircle2}
               label="Delivered"
               value={deliveredCount}
-              color="emerald"
+              
             />
             <StatCard
               icon={XCircle}
               label="Failed"
               value={failedCount}
-              color="rose"
+              
             />
             <StatCard
               icon={Clock}
               label="Pending"
               value={pendingCount}
-              color="amber"
+              
             />
             <StatCard
               icon={AlertTriangle}
               label="DLQ"
               value={dlqCount}
-              color="orange"
+              
             />
           </div>
         )}
@@ -225,12 +230,14 @@ export default async function EventsPage({
         </div>
 
         {/* Content */}
+      
         {events.length === 0 ? (
+          
           <EmptyState status={status} />
         ) : (
-          <EventsTable events={events} 
+          <EventsLiveWrapper initialEvents={events} />
           
-          />
+          
           
         )}
       </div>
@@ -240,52 +247,6 @@ export default async function EventsPage({
 
 /* ------------------ Components ------------------ */
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: LucideIcon
-  label: string
-  value: number
-  color: "blue" | "emerald" | "rose" | "amber" | "orange"
-}) {
-  const colorMap = {
-    blue: {
-      bg: "bg-blue-50 dark:bg-blue-950/30",
-      icon: "text-blue-600 dark:text-blue-400",
-    },
-    emerald: {
-      bg: "bg-emerald-50 dark:bg-emerald-950/30",
-      icon: "text-emerald-600 dark:text-emerald-400",
-    },
-    rose: {
-      bg: "bg-rose-50 dark:bg-rose-950/30",
-      icon: "text-rose-600 dark:text-rose-400",
-    },
-    amber: {
-      bg: "bg-amber-50 dark:bg-amber-950/30",
-      icon: "text-amber-600 dark:text-amber-400",
-    },
-    orange: {
-      bg: "bg-orange-50 dark:bg-orange-950/30",
-      icon: "text-orange-600 dark:text-orange-400",
-    },
-  }
-
-  const colors = colorMap[color]
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className={`inline-flex p-2 rounded-lg ${colors.bg} mb-3`}>
-        <Icon className={`w-5 h-5 ${colors.icon}`} />
-      </div>
-      <p className="text-2xl font-bold mb-1 tabular-nums">{value.toLocaleString()}</p>
-      <p className="text-sm text-muted-foreground">{label}</p>
-    </div>
-  )
-}
 
 function EmptyState({ status }: { status?: string }) {
   const getMessage = () => {

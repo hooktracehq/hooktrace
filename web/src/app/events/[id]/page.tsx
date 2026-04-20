@@ -8,7 +8,7 @@ import { ReplayButton } from "@/components/ReplayButton"
 import { EventLiveView } from "@/components/EventLiveView"
 import { JsonViewer } from "@/components/events/json-viewer"
 import { ThemeToggle } from "@/components/theme-toggle"
-
+import { StatusBadge } from "@/components/ui/status-badge"
 
 import {
   type LucideIcon,
@@ -61,34 +61,8 @@ export default async function EventDetailPage({
 
   if (!event) notFound()
 
-  const displayStatus = event.status === "retrying" ? "pending" : event.status
-
-  const statusConfig = {
-    delivered: {
-      icon: CheckCircle2,
-      label: "Delivered",
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-50 dark:bg-emerald-950/30",
-      border: "border-emerald-200 dark:border-emerald-900",
-    },
-    failed: {
-      icon: XCircle,
-      label: "Failed",
-      color: "text-rose-600 dark:text-rose-400",
-      bg: "bg-rose-50 dark:bg-rose-950/30",
-      border: "border-rose-200 dark:border-rose-900",
-    },
-    pending: {
-      icon: Clock,
-      label: "Pending",
-      color: "text-amber-600 dark:text-amber-400",
-      bg: "bg-amber-50 dark:bg-amber-950/30",
-      border: "border-amber-200 dark:border-amber-900",
-    },
-  }
-
-  const config = statusConfig[displayStatus]
-  const StatusIcon = config.icon
+    const displayStatus = event.status === "retrying" ? "pending" : event.status
+  
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,17 +94,12 @@ export default async function EventDetailPage({
               </div>
 
               {/* Status Badge */}
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${config.bg} ${config.border} border`}>
-                <StatusIcon className={`w-5 h-5 ${config.color}`} />
-                <div>
-                  <p className={`font-semibold text-sm ${config.color}`}>
-                    {config.label}
-                  </p>
-                  <p className={`text-xs ${config.color}`}>
-                    {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
-                  </p>
-                </div>
-              </div>
+              <div className="flex items-center gap-3">
+              <StatusBadge status={displayStatus} />
+  <p className="text-xs text-muted-foreground">
+    {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+  </p>
+</div>
             </div>
           </div>
 
@@ -148,25 +117,25 @@ export default async function EventDetailPage({
             icon={Globe}
             label="Route"
             value={event.route}
-            color="blue"
+            
           />
           <InfoCard
             icon={Zap}
             label="Provider"
             value={event.provider || "Generic"}
-            color="violet"
+            
           />
           <InfoCard
             icon={RotateCcw}
             label="Attempts"
             value={event.attempt_count.toString()}
-            color="amber"
+            
           />
           <InfoCard
             icon={Calendar}
             label="Created"
             value={formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
-            color="emerald"
+            
           />
         </div>
 
@@ -269,47 +238,21 @@ function InfoCard({
   icon: Icon,
   label,
   value,
-  color,
 }: {
   icon: LucideIcon
   label: string
   value: string
-  color: "blue" | "violet" | "amber" | "emerald"
 }) {
-  const colorMap = {
-    blue: {
-      bg: "bg-blue-50 dark:bg-blue-950/30",
-      icon: "text-blue-600 dark:text-blue-400",
-    },
-    violet: {
-      bg: "bg-violet-50 dark:bg-violet-950/30",
-      icon: "text-violet-600 dark:text-violet-400",
-    },
-    amber: {
-      bg: "bg-amber-50 dark:bg-amber-950/30",
-      icon: "text-amber-600 dark:text-amber-400",
-    },
-    emerald: {
-      bg: "bg-emerald-50 dark:bg-emerald-950/30",
-      icon: "text-emerald-600 dark:text-emerald-400",
-    },
-  }
-
-  const colors = colorMap[color]
-
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className={`inline-flex p-2 rounded-lg ${colors.bg} mb-2`}>
-        <Icon className={`w-4 h-4 ${colors.icon}`} />
+      <div className="inline-flex p-2 rounded-lg bg-muted/50 mb-2">
+        <Icon className="w-4 h-4 text-primary" />
       </div>
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="font-semibold text-sm truncate" title={value}>
-        {value}
-      </p>
+      <p className="font-semibold text-sm truncate">{value}</p>
     </div>
   )
 }
-
 function MetaField({
   icon: Icon,
   label,

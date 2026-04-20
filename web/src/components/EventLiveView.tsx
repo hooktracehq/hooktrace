@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
-import { StatusBadge } from "@/components/events/status-badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 type EventStatus = "pending" | "delivered" | "failed" | "retrying"
 
