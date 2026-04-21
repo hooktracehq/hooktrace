@@ -21,17 +21,18 @@ import Link from "next/link"
 
 import { headers } from "next/headers"
 
-export default async function EventsPage() {
-  const headersList = headers()
-  const url = (await headersList).get("x-url") || ""
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
+  const { status } = await searchParams
 
-  const searchParams = new URL(url, "http://localhost").searchParams
-  const status = searchParams.get("status") || undefined
+  console.log("FINAL STATUS:", status)
 
-  console.log(" FINAL STATUS:", status)
   const query = status 
   ? `/events?status=${status}` 
-  : "/events/"
+  : "/events"
   
 
   const res = await serverApiFetch<{ items: Event[] }>(query)
