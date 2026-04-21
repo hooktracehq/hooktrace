@@ -1,13 +1,12 @@
 
-export const dynamic = "force-dynamic"
+// export const dynamic = "force-dynamic"
 
 import { serverApiFetch } from "@/lib/server-api"
 import { EventsLiveWrapper } from "@/app/events/clientWrapper"
 import { EventsTabs } from "@/components/events/event-tabs"
-
+import { Event } from "@/types/event"
 import { StatCard } from "@/components/ui/stat-card"
 import {
-  type LucideIcon,
   Activity,
   CheckCircle2,
   XCircle,
@@ -19,28 +18,21 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 
-type Event = {
-  id: number
-  route: string
-  provider?: string
-  event_type?: string
-  status: "pending" | "delivered" | "failed"
-  attempt_count: number
-  created_at: string
-  last_error?: string
-}
 
+import { headers } from "next/headers"
 
+export default async function EventsPage() {
+  const headersList = headers()
+  const url = (await headersList).get("x-url") || ""
 
+  const searchParams = new URL(url, "http://localhost").searchParams
+  const status = searchParams.get("status") || undefined
 
-
-export default async function EventsPage({
-  searchParams,
-}: {
-  searchParams: { status?: string }
-}) {
-  const status = searchParams.status
-  const query = status ? `/events?status=${status}` : "/events/"
+  console.log(" FINAL STATUS:", status)
+  const query = status 
+  ? `/events?status=${status}` 
+  : "/events/"
+  
 
   const res = await serverApiFetch<{ items: Event[] }>(query)
   const events = res?.items ?? []
@@ -55,9 +47,9 @@ export default async function EventsPage({
   if (!status) {
     // Only calculate when showing all events
     deliveredCount = events.filter(e => e.status === "delivered").length
-    failedCount = events.filter(e => e.status === "failed" && e.attempt_count < 5).length
+    failedCount = events.filter(e => e.status === "failed" && (e.attempt_count ?? 0) < 5).length
     pendingCount = events.filter(e => e.status === "pending").length
-    dlqCount = events.filter(e => e.status === "failed" && e.attempt_count >= 5).length
+    dlqCount = events.filter(e => e.status === "failed" && (e.attempt_count ?? 0) >= 5).length
   }
 
   const successRate = !status && totalEvents > 0 
@@ -235,7 +227,7 @@ export default async function EventsPage({
           
           <EmptyState status={status} />
         ) : (
-          <EventsLiveWrapper initialEvents={events} />
+          <EventsLiveWrapper key={status ?? "all"} initialEvents={events} status={status} />
           
           
           

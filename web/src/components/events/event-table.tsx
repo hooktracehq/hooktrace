@@ -21,18 +21,9 @@ import {
 
 import { StatusBadge } from "@/components/ui/status-badge"
 
-/* ---------------- Types ---------------- */
+import { Event } from "@/types/event"
 
-type Event = {
-  id: number
-  route: string
-  provider?: string
-  event_type?: string
-  status: "pending" | "delivered" | "failed" | "retrying"
-  attempt_count: number
-  created_at: string
-  last_error?: string
-}
+
 
 type Props = {
   events: Event[]

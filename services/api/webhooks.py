@@ -154,15 +154,23 @@ async def receive_webhook(
                 db.commit()
 
         # -----------------------------
-        # 🔥 BROADCAST FINAL STATE
+        #  FETCH REAL ATTEMPT COUNT
+        # -----------------------------
+        attempt_count = db.execute(
+            text("SELECT attempt_count FROM webhook_events WHERE id = :id"),
+            {"id": event_id}
+        ).scalar()
+
+        # -----------------------------
+        #  BROADCAST FINAL STATE
         # -----------------------------
         await manager.broadcast(json.dumps({
             "id": event_id,
             "provider": provider,
             "event_type": event_type,
             "status": status,
-            "route": "stripe-webhook",
-            "attempt_count": 0,
+            "route": route_id,
+            "attempt_count": attempt_count or 0,
             "created_at": datetime.utcnow().isoformat()
         }))
 

@@ -108,44 +108,135 @@
 
 
 
+// "use client"
+
+// import Link from "next/link"
+// import { useSearchParams } from "next/navigation"
+// import { Activity, Clock, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
+
+// export function EventsTabs() {
+//   const searchParams = useSearchParams()
+//   const currentStatus = searchParams.get("status")
+
+//   const tabs = [
+//     { label: "All Events", icon: Activity, href: "/events", status: null },
+//     { label: "Pending", icon: Clock, href: "/events?status=pending", status: "pending" },
+//     { label: "Delivered", icon: CheckCircle2, href: "/events?status=delivered", status: "delivered" },
+//     { label: "Failed", icon: XCircle, href: "/events?status=failed", status: "failed" },
+//     { label: "DLQ", icon: AlertTriangle, href: "/events?status=dlq", status: "dlq" },
+//   ]
+
+//   return (
+//     <div className="flex items-center gap-2 overflow-x-auto">
+//       {tabs.map((tab) => {
+//         const isActive = currentStatus === tab.status
+//         const Icon = tab.icon
+
+//         return (
+//           <Link
+//             key={tab.href}
+//             href={tab.href}
+//             className={`
+//               flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+//               transition-all whitespace-nowrap
+//               ${isActive
+//                 ? "bg-primary text-primary-foreground shadow-sm"
+//                 : "hover:bg-accent text-muted-foreground hover:text-foreground"
+//               }
+//             `}
+//           >
+//             <Icon className="w-4 h-4" />
+//             {tab.label}
+//           </Link>
+//         )
+//       })}
+//     </div>
+//   )
+// }
+
+
+
+
+
+// "use client"
+// import Link from "next/link"
+// import { useSearchParams } from "next/navigation"
+
+// export function EventsTabs() {
+//   const searchParams = useSearchParams()
+//   const current = searchParams.get("status")
+
+//   const tabs = [
+//     { label: "All", value: null },
+//     { label: "Pending", value: "pending" },
+//     { label: "Delivered", value: "delivered" },
+//     { label: "Failed", value: "failed" },
+//     { label: "DLQ", value: "dlq" },
+//   ]
+
+//   return (
+//     <div className="flex gap-2">
+//       {tabs.map((tab) => {
+//         const href = tab.value ? `/events?status=${tab.value}` : "/events"
+//         const active = current === tab.value || (!current && !tab.value)
+
+//         return (
+//           <Link
+//             key={tab.label}
+//             href={href}
+//             className={`px-3 py-1.5 rounded-lg text-sm ${
+//               active
+//                 ? "bg-primary text-white"
+//                 : "text-muted-foreground hover:bg-muted"
+//             }`}
+//           >
+//             {tab.label}
+//           </Link>
+//         )
+//       })}
+//     </div>
+//   )
+// }
+
+
+
+
+
+
 "use client"
 
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { Activity, Clock, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
 
 export function EventsTabs() {
   const searchParams = useSearchParams()
-  const currentStatus = searchParams.get("status")
+  const current = searchParams.get("status")
 
   const tabs = [
-    { label: "All Events", icon: Activity, href: "/events", status: null },
-    { label: "Pending", icon: Clock, href: "/events?status=pending", status: "pending" },
-    { label: "Delivered", icon: CheckCircle2, href: "/events?status=delivered", status: "delivered" },
-    { label: "Failed", icon: XCircle, href: "/events?status=failed", status: "failed" },
-    { label: "DLQ", icon: AlertTriangle, href: "/events?status=dlq", status: "dlq" },
+    { label: "All", value: null },
+    { label: "Pending", value: "pending" },
+    { label: "Delivered", value: "delivered" },
+    { label: "Failed", value: "failed" },
+    { label: "DLQ", value: "dlq" },
   ]
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto">
+    <div className="flex gap-2">
       {tabs.map((tab) => {
-        const isActive = currentStatus === tab.status
-        const Icon = tab.icon
+        const href = tab.value ? `/events?status=${tab.value}` : "/events"
+        const isActive =
+          (tab.value === null && !current) || current === tab.value
 
         return (
           <Link
-            key={tab.href}
-            href={tab.href}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-              transition-all whitespace-nowrap
-              ${isActive
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "hover:bg-accent text-muted-foreground hover:text-foreground"
-              }
-            `}
+            key={tab.label}
+            href={href}
+            className={`px-3 py-1.5 rounded-lg text-sm transition ${
+              isActive
+                ? "bg-primary text-white"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
           >
-            <Icon className="w-4 h-4" />
             {tab.label}
           </Link>
         )
