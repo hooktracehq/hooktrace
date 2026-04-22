@@ -718,6 +718,171 @@
 
 
 
+// export const dynamic = "force-dynamic"
+
+// import { notFound } from "next/navigation"
+// import { formatDistanceToNow } from "date-fns"
+// import Link from "next/link"
+
+// import { serverApiFetch } from "@/lib/server-api"
+// import { ReplayButton } from "@/components/ReplayButton"
+// import { ThemeToggle } from "@/components/theme-toggle"
+// import { StatusBadge } from "@/components/ui/status-badge"
+// import { EventDetailTabs } from "@/components/events/event-detail-tabs"
+// import type { JsonValue } from "@/types/json"
+// import { CopyButton } from "@/components/events/CopyButton"
+// import { EventDeliveries } from "../event-deliveries"
+// import type { EventDetail } from "@/types/event-detail"
+// import {
+//   type LucideIcon,
+//   Activity,
+//   ArrowLeft,
+//   Globe,
+//   Zap,
+//   RotateCcw,
+//   Target,
+//   Copy,
+// } from "lucide-react"
+
+
+
+// /* ---------------- Page ---------------- */
+
+// export default async function EventDetailPage({
+//   params,
+// }: {
+//   params: Promise<{ id: string }>
+// }) {
+//   const { id } = await params
+
+//   if (!id || Number.isNaN(Number(id))) notFound()
+
+//   let event: Event | null = null
+
+//   try {
+//     event = await serverApiFetch<Event>(`/events/${id}`)
+//   } catch {
+//     notFound()
+//   }
+
+//   if (!event) notFound()
+
+//   const displayStatus =
+//     event.status === "retrying" ? "pending" : event.status
+
+//   const attemptCount = event.attempt_count ?? 0
+
+//   return (
+//     <div className="min-h-screen bg-background">
+//       <div className="mx-auto max-w-7xl px-6 py-8 space-y-6">
+
+//         {/* Header */}
+//         <div className="flex justify-between items-start">
+
+//           <div className="space-y-4">
+
+//             <Link
+//               href="/events"
+//               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+//             >
+//               <ArrowLeft className="w-4 h-4" />
+//               Back to Events
+//             </Link>
+
+//             <div className="flex items-center gap-3">
+//               <Activity className="w-6 h-6 text-primary" />
+//               <h1 className="text-3xl font-bold">Event Details</h1>
+//             </div>
+
+//             <div className="flex items-center gap-3">
+//               <StatusBadge status={displayStatus} />
+
+//               <span className="text-xs text-muted-foreground">
+//                 {formatDistanceToNow(new Date(event.created_at), {
+//                   addSuffix: true,
+//                 })}
+//               </span>
+
+//               <span className="text-xs text-muted-foreground">
+//                 • {event.provider || "Generic"}
+//               </span>
+//             </div>
+//           </div>
+
+//           {/* Actions */}
+//           <div className="flex items-center gap-2">
+//             <ReplayButton eventId={event.id} />
+
+//             <CopyButton text={event.id.toString()} />
+
+//             <ThemeToggle />
+//           </div>
+//         </div>
+
+//         {/* Info Cards */}
+//         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+//           <InfoCard icon={Globe} label="Route" value={event.route} />
+
+//           <InfoCard
+//             icon={Zap}
+//             label="Event Type"
+//             value={event.event_type || "Unknown"}
+//           />
+
+//           <InfoCard
+//             icon={RotateCcw}
+//             label="Attempts"
+//             value={attemptCount.toString()}
+//           />
+
+//           <InfoCard
+//             icon={Target}
+//             label="Target"
+//             value={event.delivery_target || "Not configured"}
+//           />
+
+//         </div>
+
+//         {/* Tabs */}
+//         <EventDetailTabs
+//           payload={event.payload}
+//           headers={event.headers}
+//           error={event.last_error}
+//         />
+
+// <EventDeliveries eventId={event.id} />
+
+//       </div>
+//     </div>
+//   )
+// }
+
+// /* ---------------- UI Components ---------------- */
+
+// function InfoCard({
+//   icon: Icon,
+//   label,
+//   value,
+// }: {
+//   icon: LucideIcon
+//   label: string
+//   value: string
+// }) {
+//   return (
+//     <div className="rounded-lg border bg-card p-4 hover:shadow-sm transition">
+//       <Icon className="w-4 h-4 mb-2 text-primary" />
+//       <p className="text-xs text-muted-foreground">{label}</p>
+//       <p className="font-semibold text-sm">{value}</p>
+//     </div>
+//   )
+// }
+
+
+
+
+
+
 export const dynamic = "force-dynamic"
 
 import { notFound } from "next/navigation"
@@ -729,8 +894,10 @@ import { ReplayButton } from "@/components/ReplayButton"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { EventDetailTabs } from "@/components/events/event-detail-tabs"
-import type { JsonValue } from "@/types/json"
 import { CopyButton } from "@/components/events/CopyButton"
+import { EventDeliveries } from "../event-deliveries"
+
+import type { EventDetail } from "@/types/event-detail"
 
 import {
   type LucideIcon,
@@ -740,26 +907,7 @@ import {
   Zap,
   RotateCcw,
   Target,
-  Copy,
 } from "lucide-react"
-
-/* ---------------- Types ---------------- */
-
-type Event = {
-  id: number
-  token: string
-  route: string
-  provider: string | null
-  event_type?: string | null
-  status: "pending" | "delivered" | "failed" | "retrying"
-  attempt_count: number | null
-  headers: JsonValue
-  payload: JsonValue
-  created_at: string
-  delivery_target?: string | null
-  idempotency_key?: string | null
-  last_error?: string | null
-}
 
 /* ---------------- Page ---------------- */
 
@@ -772,10 +920,10 @@ export default async function EventDetailPage({
 
   if (!id || Number.isNaN(Number(id))) notFound()
 
-  let event: Event | null = null
+  let event: EventDetail | null = null
 
   try {
-    event = await serverApiFetch<Event>(`/events/${id}`)
+    event = await serverApiFetch<EventDetail>(`/events/${id}`)
   } catch {
     notFound()
   }
@@ -793,7 +941,6 @@ export default async function EventDetailPage({
 
         {/* Header */}
         <div className="flex justify-between items-start">
-
           <div className="space-y-4">
 
             <Link
@@ -827,16 +974,13 @@ export default async function EventDetailPage({
           {/* Actions */}
           <div className="flex items-center gap-2">
             <ReplayButton eventId={event.id} />
-
             <CopyButton text={event.id.toString()} />
-
             <ThemeToggle />
           </div>
         </div>
 
         {/* Info Cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
           <InfoCard icon={Globe} label="Route" value={event.route} />
 
           <InfoCard
@@ -851,12 +995,11 @@ export default async function EventDetailPage({
             value={attemptCount.toString()}
           />
 
-          <InfoCard
+          {/* <InfoCard
             icon={Target}
             label="Target"
             value={event.delivery_target || "Not configured"}
-          />
-
+          /> */}
         </div>
 
         {/* Tabs */}
@@ -865,6 +1008,20 @@ export default async function EventDetailPage({
           headers={event.headers}
           error={event.last_error}
         />
+
+        {/*  Deliveries */}
+        {/* Deliveries */}
+<div className="rounded-xl border bg-card p-5 space-y-4">
+  <div className="flex items-center justify-between">
+    <h2 className="text-lg font-semibold">Delivery Timeline</h2>
+
+    <span className="text-xs text-muted-foreground">
+      Per-target delivery attempts
+    </span>
+  </div>
+
+  <EventDeliveries eventId={event.id} />
+</div>
 
       </div>
     </div>

@@ -13,6 +13,8 @@ import { UserNav } from "@/components/user-nav"
 import { useState } from "react"
 import type { DeliveryTarget, TargetStats } from "@/types/delivery-target"
 
+import TargetLogs from "../target-logs"
+
 
 
 
@@ -146,18 +148,22 @@ export default function DeliveryTargetDetailClient({
           <h2 className="font-semibold mb-4">Observability Insight</h2>
 
           <p className="text-sm text-muted-foreground">
-  {successRate >= 98
-    ? "Delivery pipeline is highly stable with minimal failure rate."
-    : successRate >= 90
-    ? "Minor delivery issues detected. Monitor retry behavior."
-    : "Significant failures detected. Check endpoint health, retries, or configuration."}
+         {successRate >= 98
+          ? "Delivery pipeline is highly stable with minimal failure rate."
+          : successRate >= 90
+          ? "Minor delivery issues detected. Monitor retry behavior."
+          : "Significant failures detected. Check endpoint health, retries, or configuration."}
 </p>
         </div>
+        <TargetLogs targetId={target.id} />
 
       </div>
     </div>
   )
 }
+
+
+
 
 /* ---------------- UI ---------------- */
 
@@ -176,6 +182,8 @@ function Card({
     >
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="text-xl font-bold">{value}</p>
+
     </motion.div>
   )
+  
 }
