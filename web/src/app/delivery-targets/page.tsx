@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { serverApiFetch } from "@/lib/server-api"
 import DeliveryTargetsClient from "./delivery-targets-client"
-import { TARGET_TYPES } from "@/lib/constants/target-types"
+import { TARGET_TYPES } from "@/types/target-types"
 import { DeliveryTarget } from "@/types/delivery-target"
 
 
@@ -26,7 +26,7 @@ export default async function DeliveryTargetsPage() {
     <DeliveryTargetsClient
       user={user}
       deliveryTargets={deliveryTargets}
-      targetTypes={TARGET_TYPES}
+     
     />
   )
 }
