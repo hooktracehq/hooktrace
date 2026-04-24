@@ -1,3 +1,5 @@
+
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -13,18 +15,78 @@ type Log = {
   created_at: string
 }
 
+/* ---------------- HELPERS ---------------- */
+
+function groupByEvent(logs: Log[]) {
+  const map: Record<number, Log[]> = {}
+
+  logs.forEach((log) => {
+    if (!map[log.event_id]) map[log.event_id] = []
+    map[log.event_id].push(log)
+  })
+
+  return Object.entries(map)
+    .sort((a, b) => Number(b[0]) - Number(a[0])) // latest first
+    .map(([eventId, items]) => ({
+      eventId: Number(eventId),
+      items: items.sort((a, b) => b.attempt - a.attempt),
+    }))
+}
+
+function parseResponse(response?: string) {
+  if (!response) return null
+
+  try {
+    return JSON.parse(response)
+  } catch {
+    return response
+  }
+}
+
+/* ---------------- COMPONENT ---------------- */
+
 export default function TargetLogs({ targetId }: { targetId: string }) {
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/delivery-targets/${targetId}/logs`,{
-      credentials : 'include',
-    })
-      .then(res => res.json())
-      .then(data => setLogs(data.items || []))
-      .finally(() => setLoading(false))
+    async function fetchLogs() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/delivery-targets/${targetId}/logs`,
+          {
+            credentials: "include",
+          }
+        )
+  
+        const data = await res.json()
+  
+        setLogs((prev) => {
+          const next = data.items || []
+  
+          if (JSON.stringify(prev) === JSON.stringify(next)) {
+            return prev
+          }
+  
+          return next
+        })
+      } catch (err) {
+        console.error("Failed to fetch logs", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+  
+    // initial fetch
+    fetchLogs()
+  
+    //  interval defined as const
+    const interval = setInterval(fetchLogs, 5000)
+  
+    return () => clearInterval(interval)
   }, [targetId])
+
+  const grouped = groupByEvent(logs)
 
   if (loading) {
     return (
@@ -35,53 +97,92 @@ export default function TargetLogs({ targetId }: { targetId: string }) {
   }
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-2xl border bg-card p-5 space-y-6">
 
-      <div className="px-4 py-3 border-b text-sm font-medium">
-        Delivery Logs
-      </div>
+      <h2 className="font-semibold text-sm">Activity Timeline</h2>
 
-      <div className="divide-y">
-        {logs.length === 0 && (
-          <div className="p-6 text-sm text-muted-foreground">
-            No deliveries yet
+      {grouped.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No activity yet
+        </p>
+      )}
+
+      {grouped.map((group) => (
+        <div key={group.eventId} className="space-y-3">
+
+          {/* Event Header */}
+          <div className="text-xs font-medium text-muted-foreground">
+            Event #{group.eventId}
           </div>
-        )}
 
-        {logs.map(log => (
-          <div
-            key={log.id}
-            className="flex items-center justify-between p-4 hover:bg-muted/40 transition"
-          >
-            {/* LEFT */}
-            <div className="flex items-center gap-3">
+          <div className="space-y-2 border-l pl-4">
 
-              {log.status === "success" && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              )}
+            {group.items.map((log) => {
+              const parsed = parseResponse(log.response)
 
-              {log.status === "failed" && (
-                <XCircle className="w-4 h-4 text-rose-500" />
-              )}
+              return (
+                <div key={log.id} className="flex gap-3">
 
-              <div>
-                <p className="text-sm font-medium">
-                  Event #{log.event_id}
-                </p>
+                  {/* Timeline Dot */}
+                  <div className="mt-1">
+                    {log.status === "success" ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-500" />
+                    )}
+                  </div>
 
-                <p className="text-xs text-muted-foreground">
-                  Attempt {log.attempt} • {log.status_code || "—"}
-                </p>
-              </div>
-            </div>
+                  {/* Content */}
+                  <div className="flex-1 space-y-1">
 
-            {/* RIGHT */}
-            <div className="text-xs text-muted-foreground">
-              {new Date(log.created_at).toLocaleTimeString()}
-            </div>
+                    <p className="text-sm font-medium">
+                      {log.status === "success"
+                        ? "Delivered successfully"
+                        : "Delivery failed"}
+                    </p>
+
+                    <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+
+                      <span>Attempt {log.attempt}</span>
+
+                      {log.status_code && (
+                        <span>HTTP {log.status_code}</span>
+                      )}
+
+                      {parsed?.duration_ms && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {parsed.duration_ms}ms
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Response preview */}
+                    {parsed && (
+                      <details className="text-xs mt-1">
+                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                          View response
+                        </summary>
+
+                        <pre className="mt-2 p-2 bg-muted rounded overflow-auto text-[10px] max-h-48">
+                          {typeof parsed === "string"
+                            ? parsed.slice(0, 500)
+                            : JSON.stringify(parsed, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+
+                  {/* Time */}
+                  <div className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(log.created_at).toLocaleTimeString()}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   )
 }

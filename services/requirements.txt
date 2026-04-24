@@ -20,3 +20,4 @@ requests
 boto3
 pika
 grpcio
+

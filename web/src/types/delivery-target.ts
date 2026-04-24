@@ -13,6 +13,14 @@ export type DeliveryTarget = {
   providers: string[]
 }
 
+
+
+export type DeliveryTargetPayload = {
+  name: string
+  type: string
+  config: Record<string, unknown>
+  providers?: string[]
+}
 /* ---------------- Target Stats ---------------- */
 
 export type TargetStats = {
