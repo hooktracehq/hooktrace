@@ -4,7 +4,7 @@ export type DeliveryTarget = {
   id: string
   name: string
   type: string
-  config: Record<string, unknown>
+  config: TargetConfig
   enabled: boolean
   createdAt: string
   lastUsed?: string | null
@@ -18,7 +18,7 @@ export type DeliveryTarget = {
 export type DeliveryTargetPayload = {
   name: string
   type: string
-  config: Record<string, unknown>
+  config: TargetConfig
   providers?: string[]
 }
 /* ---------------- Target Stats ---------------- */
@@ -59,3 +59,66 @@ export type TargetType = {
   category: "web" | "queue" | "streaming" | "rpc"
   configFields: TargetConfigField[]
 }
+
+
+
+
+
+
+
+
+export type HttpConfig = {
+  url?: string
+  method?: string
+  timeout?: string
+  retries?: string
+  secret?: string
+  headers?: string | Record<string, string>
+}
+
+export type KafkaConfig = {
+  brokers?: string
+  topic?: string
+}
+
+export type RedisConfig = {
+  redisUrl?: string
+  channel?: string
+}
+
+export type SqsConfig = {
+  queueUrl?: string
+  region?: string
+}
+
+export type RabbitMQConfig = {
+  host?: string
+  exchange?: string
+  routingKey?: string
+}
+
+export type SlackConfig = {
+  webhookUrl?: string
+}
+
+export type EmailConfig = {
+  recipients?: string
+  subject?: string
+  includePayload?: boolean
+}
+
+export type GrpcConfig = {
+  grpcUrl?: string
+}
+
+
+export type TargetConfig = Partial<
+  HttpConfig &
+  KafkaConfig &
+  RedisConfig &
+  SqsConfig &
+  RabbitMQConfig &
+  SlackConfig &
+  EmailConfig &
+  GrpcConfig
+>
