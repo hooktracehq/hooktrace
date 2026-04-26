@@ -253,6 +253,38 @@ import json
 from .database import SessionLocal
 
 
+
+
+import time
+
+def execute_with_retry(worker, config, payload):
+    max_retries = config.get("retries", 2)
+    delay = 0.5  # seconds (base)
+
+    attempt = 0
+
+    while attempt <= max_retries:
+        try:
+            result = worker(config, payload)
+
+            # success condition
+            if result.get("status_code") and 200 <= result["status_code"] < 300:
+                return result, attempt + 1, True
+
+            # treat non-2xx as failure
+            raise Exception(f"HTTP {result.get('status_code')}")
+
+        except Exception as e:
+            if attempt == max_retries:
+                return {
+                    "status_code": None,
+                    "error": str(e)
+                }, attempt + 1, False
+
+            # exponential backoff
+            time.sleep(delay * (2 ** attempt))
+            attempt += 1
+
 class DeliveryTargetsRouter:
 
     def __init__(self):
@@ -348,7 +380,7 @@ class DeliveryTargetsRouter:
 
             # 🔁 execute + catch errors
             try:
-                result = worker(config, webhook_data)
+                result, attempts, success = execute_with_retry(worker,config,webhook_data)
                 status = "success"
                 success = True
             except Exception as e:
@@ -382,7 +414,7 @@ class DeliveryTargetsRouter:
                         "status": status,
                         "status_code": result.get("status_code"),
                         "response": json.dumps(result),
-                        "attempt": 1
+                        "attempt": attempts
                     }
                 )
                 db.commit()

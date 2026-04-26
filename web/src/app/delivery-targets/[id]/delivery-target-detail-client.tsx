@@ -51,7 +51,7 @@ export default function DeliveryTargetDetailClient({
 
   const [loading, setLoading] = useState(false)
   const [testResult, setTestResult] = useState<TestResult | null>(null)
-  const [logs, setLogs] = useState([])
+
   const [editMode, setEditMode] = useState(false)
 
   const [form, setForm] = useState({
@@ -59,38 +59,6 @@ export default function DeliveryTargetDetailClient({
     config: target.config as Record<string, string>,
   })
 
-  useEffect(() => {
-    let mounted = true
-  
-    const loadLogs = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/delivery-targets/${currentTarget.id}/logs`,
-          { credentials: "include" }
-        )
-  
-        if (!res.ok) {
-          throw new Error(`Failed to fetch logs (${res.status})`)
-        }
-  
-        const data = await res.json()
-  
-        if (mounted) setLogs(data.items || [])
-      } catch (err) {
-        console.error("Failed to load delivery target logs", err)
-        if (mounted) {
-          setLogs([])
-          toast.error("Could not load logs")
-        }
-      }
-    }
-  
-    loadLogs()
-  
-    return () => {
-      mounted = false
-    }
-  }, [currentTarget.id])
 
   useEffect(() => {
     setForm({
@@ -104,7 +72,7 @@ export default function DeliveryTargetDetailClient({
   async function testTarget() {
     setLoading(true)
     setTestResult(null)
-
+  
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/delivery-targets/${currentTarget.id}/test`,
@@ -113,9 +81,17 @@ export default function DeliveryTargetDetailClient({
           credentials: "include",
         }
       )
-
+  
       const data = await res.json()
-      setTestResult(data)
+  
+      const first = data?.result?.details?.[0]
+  
+      setTestResult({
+        success: data?.success,
+        result: first?.result,
+        error: first?.error,
+      })
+  
     } catch {
       setTestResult({
         success: false,
@@ -420,7 +396,7 @@ export default function DeliveryTargetDetailClient({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.25 }}
         >
-          <InsightsPanel logs={logs} />
+         <InsightsPanel logs={[]} />
         </motion.div>
 
         <motion.div

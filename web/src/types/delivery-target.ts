@@ -48,6 +48,7 @@ export type TargetConfigField = {
   placeholder?: string
   required?: boolean
   options?: string[]
+  
 }
 
 export type TargetType = {
@@ -70,11 +71,12 @@ export type TargetType = {
 export type HttpConfig = {
   url?: string
   method?: string
-  timeout?: string
-  retries?: string
+  timeout?: number
+  retries?: number
   secret?: string
   headers?: string | Record<string, string>
   transform?: string
+
 }
 
 export type KafkaConfig = {
