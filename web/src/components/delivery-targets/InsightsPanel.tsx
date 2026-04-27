@@ -18,7 +18,6 @@ function parseResponse(response?: string) {
   }
 }
 
-/* FAILURE CLASSIFICATION */
 function classifyFailure(log: Log) {
   if (log.status_code) {
     if (log.status_code >= 500) return "Server Error"
@@ -32,7 +31,7 @@ function classifyFailure(log: Log) {
 }
 
 export default function InsightsPanel({ logs }: { logs: Log[] }) {
-  if (!logs.length) {
+  if (!logs || logs.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -46,14 +45,14 @@ export default function InsightsPanel({ logs }: { logs: Log[] }) {
     )
   }
 
-  /* ---------------- METRICS ---------------- */
+  /* ---------------- BASIC METRICS ---------------- */
 
   const total = logs.length
   const success = logs.filter(l => l.status === "success").length
   const failed = total - success
   const successRate = Math.round((success / total) * 100)
 
-  /* ---------------- FAILURE REASONS ---------------- */
+  /* ---------------- FAILURE ANALYSIS ---------------- */
 
   const failureMap: Record<string, number> = {}
 
@@ -64,8 +63,7 @@ export default function InsightsPanel({ logs }: { logs: Log[] }) {
     }
   })
 
-  const topFailure = Object.entries(failureMap)
-    .sort((a, b) => b[1] - a[1])[0]
+  const topFailure = Object.entries(failureMap).sort((a, b) => b[1] - a[1])[0]
 
   /* ---------------- LATENCY ---------------- */
 
@@ -77,7 +75,7 @@ export default function InsightsPanel({ logs }: { logs: Log[] }) {
     ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
     : null
 
-  /* ---------------- RETRY SUCCESS (FIXED) ---------------- */
+  /* ---------------- RETRY SUCCESS ---------------- */
 
   const retryMap: Record<number, Log[]> = {}
 
@@ -87,29 +85,33 @@ export default function InsightsPanel({ logs }: { logs: Log[] }) {
     retryMap[log.event_id].push(log)
   })
 
-  let retryTotal = 0
-  let retrySuccess = 0
+  let retryGroups = 0
+  let retryRecovered = 0
 
   Object.values(retryMap).forEach(group => {
     if (group.length > 1) {
-      retryTotal++
-      if (group.some(l => l.status === "success")) {
-        retrySuccess++
+      retryGroups++
+
+      const first = group[group.length - 1] // oldest
+      const final = group[0] // latest
+
+      if (first.status === "failed" && final.status === "success") {
+        retryRecovered++
       }
     }
   })
 
   const retryRate =
-    retryTotal > 0
-      ? Math.round((retrySuccess / retryTotal) * 100)
+    retryGroups > 0
+      ? Math.round((retryRecovered / retryGroups) * 100)
       : null
 
-  /* ---------------- RECOMMENDATION (FIXED) ---------------- */
+  /* ---------------- RECOMMENDATION ---------------- */
 
   let recommendation = "System is stable."
 
   if (successRate < 90) {
-    recommendation = "Failure rate is elevated. Investigate endpoint reliability."
+    recommendation = "Failure rate is high. Investigate endpoint reliability."
   }
 
   if (topFailure?.[0] === "Server Error") {
@@ -120,6 +122,10 @@ export default function InsightsPanel({ logs }: { logs: Log[] }) {
     recommendation = "High latency detected. Consider optimizing your endpoint."
   }
 
+  if (retryRate !== null && retryRate < 50) {
+    recommendation = "Retries are failing often. Endpoint may be consistently failing."
+  }
+
   /* ---------------- UI ---------------- */
 
   return (
@@ -128,49 +134,34 @@ export default function InsightsPanel({ logs }: { logs: Log[] }) {
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl border bg-card p-6 space-y-5"
     >
-
       <h2 className="font-semibold">Insights</h2>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-
         <Stat label="Success Rate" value={`${successRate}%`} />
         <Stat label="Failures" value={failed} />
         <Stat label="Avg Latency" value={avgLatency ? `${avgLatency}ms` : "-"} />
-        <Stat label="Retry Success" value={retryRate ? `${retryRate}%` : "-"} />
-
+        <Stat label="Retry Recovery" value={retryRate ? `${retryRate}%` : "-"} />
       </div>
 
       {/* Failure summary */}
       {topFailure && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-xs text-muted-foreground"
-        >
+        <p className="text-xs text-muted-foreground">
           Top failure: {topFailure[0]} ({topFailure[1]} times)
-        </motion.p>
+        </p>
       )}
 
-      {/* Failure alert */}
+      {/* Alert */}
       {failed > 0 && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-xs text-red-500"
-        >
+        <p className="text-xs text-red-500">
           {failed} failure(s) detected
-        </motion.p>
+        </p>
       )}
 
       {/* Recommendation */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-sm bg-muted p-3 rounded-md"
-      >
+      <div className="text-sm bg-muted p-3 rounded-md">
         💡 {recommendation}
-      </motion.div>
+      </div>
     </motion.div>
   )
 }
@@ -179,10 +170,7 @@ export default function InsightsPanel({ logs }: { logs: Log[] }) {
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className="space-y-1"
-    >
+    <motion.div whileHover={{ y: -2 }} className="space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="font-semibold">{value}</p>
     </motion.div>

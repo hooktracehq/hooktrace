@@ -263,19 +263,19 @@ def metrics_endpoint():
 # Dev tunnels
 # -----------------------------
 
-tunnels = {}
+# tunnels = {}
 
-@app.websocket("/ws/tunnel/{token}")
-async def websocket_tunnel(websocket: WebSocket, token: str):
-    await websocket.accept()
+# @app.websocket("/ws/tunnel/{token}")
+# async def websocket_tunnel(websocket: WebSocket, token: str):
+#     await websocket.accept()
 
-    tunnels[token] = websocket
+#     tunnels[token] = websocket
 
-    print(f"[tunnel] connected: {token}")
+#     print(f"[tunnel] connected: {token}")
 
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        print(f"[tunnel] disconnected: {token}")
-        tunnels.pop(token, None)
+#     try:
+#         while True:
+#             await websocket.receive_text()
+#     except WebSocketDisconnect:
+#         print(f"[tunnel] disconnected: {token}")
+#         tunnels.pop(token, None)

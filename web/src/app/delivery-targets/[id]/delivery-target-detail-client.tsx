@@ -31,6 +31,15 @@ type TestResult = {
   error?: string
 }
 
+type Log = {
+  event_id?: number
+  status: "success" | "failed"
+  status_code?: number
+  response?: string
+  attempt: number
+}
+
+
 /* ---------------- COMPONENT ---------------- */
 
 export default function DeliveryTargetDetailClient({
@@ -53,7 +62,7 @@ export default function DeliveryTargetDetailClient({
   const [testResult, setTestResult] = useState<TestResult | null>(null)
 
   const [editMode, setEditMode] = useState(false)
-
+  const [logs, setLogs] = useState<Log[]>([])
   const [form, setForm] = useState({
     name: target.name,
     config: target.config as Record<string, string>,
@@ -187,10 +196,10 @@ export default function DeliveryTargetDetailClient({
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={testTarget}
+              onClick={deleteTarget}
               className="px-3 py-1.5 text-sm border rounded-md"
             >
-              Test
+              Delete
             </motion.button>
 
             <EditTargetModal
@@ -404,7 +413,7 @@ export default function DeliveryTargetDetailClient({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <TargetLogs targetId={currentTarget.id} />
+          <TargetLogs targetId={currentTarget.id} setLogs={setLogs} />
         </motion.div>
 
       </div>

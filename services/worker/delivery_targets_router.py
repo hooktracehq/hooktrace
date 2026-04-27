@@ -381,8 +381,7 @@ class DeliveryTargetsRouter:
             # 🔁 execute + catch errors
             try:
                 result, attempts, success = execute_with_retry(worker,config,webhook_data)
-                status = "success"
-                success = True
+                status = "success" if success else "failed"
             except Exception as e:
                 result = {
                     "status_code": None,
@@ -401,6 +400,7 @@ class DeliveryTargetsRouter:
                     text("""
                         INSERT INTO delivery_logs (
                             target_id,
+                            event_id,
                             status,
                             status_code,
                             response,
@@ -411,6 +411,7 @@ class DeliveryTargetsRouter:
                     """),
                     {
                         "target_id": target_id,
+                        "event_id": webhook_data.get("id"),
                         "status": status,
                         "status_code": result.get("status_code"),
                         "response": json.dumps(result),

@@ -360,18 +360,21 @@ def test_delivery_target(target_id: str, user_id: str = Depends(get_current_user
     target_id=target_id
 )
 
-        db.execute(
-            text("""
-                UPDATE delivery_targets
-                SET success_count = success_count + 1,
-                    last_used = CURRENT_TIMESTAMP
-                WHERE id = :id
-            """),
-            {"id": target_id}
-        )
+        # db.execute(
+        #     text("""
+        #         UPDATE delivery_targets
+        #         SET success_count = success_count + 1,
+        #             last_used = CURRENT_TIMESTAMP
+        #         WHERE id = :id
+        #     """),
+        #     {"id": target_id}
+        # )
         db.commit()
 
-        return {"success": True, "result": result}
+        return {
+    "success": result["failed"] == 0,
+    "result": result
+}
 
     except Exception as e:
         db.execute(

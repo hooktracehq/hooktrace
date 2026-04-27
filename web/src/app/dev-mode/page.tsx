@@ -15,14 +15,15 @@ type Tunnel = {
 }
 
 async function getTunnels(): Promise<Tunnel[]> {
-  const res = await fetch(`${process.env.API_URL}/tunnels`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tunnels`, {
     credentials: "include",
     cache: "no-store",
   })
 
   if (!res.ok) return []
 
-  return res.json()
+  const data = await res.json()
+return data.items || []
 }
 
 export default async function DevModePage() {

@@ -472,22 +472,19 @@ function CreateTunnelModal({
   const handleCreate = async () => {
     setIsCreating(true)
   
-    // In production, call backend to create tunnel
-    setTimeout(() => {
-      const newTunnel: Tunnel = {
-        id: `tunnel-${Date.now()}`,
+    // In production, call backend to create tunnel 
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tunnels`, {
+      method: "POST",                                 
+      credentials: "include", 
+      headers: { "Content-Type": "application/json" },    // now calling real API
+      body: JSON.stringify({
         name,
-        localUrl,
-        publicUrl: `https://hook-${Math.random().toString(36).substr(2, 9)}.hooktrace.dev`,
-        status: "active",
-        createdAt: new Date().toISOString(),
-        requestCount: 0,
-        lastRequest: null,
-      }
-  
-      onCreate(newTunnel)
-      setIsCreating(false)
-    }, 1000)
+        local_url: localUrl,
+      }),
+    })
+    
+    const newTunnel = await res.json()
+    onCreate(newTunnel)
   }
 
   return (
