@@ -281,6 +281,12 @@ const PROVIDERS = {
   },
 }
 
+
+
+type Integration = {
+  provider: string
+  webhook_token: string
+}
 export default async function ProviderDetailPage({
   params,
 }: {
@@ -292,8 +298,16 @@ export default async function ProviderDetailPage({
   const provider = PROVIDERS[params.id as keyof typeof PROVIDERS]
   if (!provider) notFound()
 
-  // In production, check if user has this integration connected
-  const isConnected = ["stripe", "github"].includes(params.id)
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/integrations`, {
+      cache: "no-store",
+      credentials: "include",
+    })
+    
+    const data = await res.json()
+    
+    const items = data.items as Integration[]
+
+const isConnected = items.some((i) => i.provider === params.id)
 
   return (
     <ProviderDetailClient

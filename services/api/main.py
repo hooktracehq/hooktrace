@@ -159,6 +159,7 @@ from .tunnels import router as tunnels_router
 from .auth import router as auth_router
 from .aggregation import router as aggregation_router
 from .usage import router as usage_router
+from .integrations import router as integrations_router
 
 # Websocket
 from .ws import manager
@@ -213,6 +214,7 @@ app.include_router(delivery_targets_router)
 app.include_router(webhooks_router)
 app.include_router(tunnels_router)
 app.include_router(aggregation_router)
+app.include_router(integrations_router)
 
 # -----------------------------
 # WebSocket
