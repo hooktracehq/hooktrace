@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     siteName: "Hooktrace",
     images: [
       {
-        url: "/opengraph-image", 
+        url: "/og.png", 
         width: 1200,
         height: 630,
       },
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     title: "Hooktrace – Webhook Debugging & Retry Platform",
     description:
       "Webhook relay with retries, observability and AI debugging.",
-    images: ["/opengraph-image"], 
+    images: ["/og.png"], 
   },
 };
 export default function RootLayout({
