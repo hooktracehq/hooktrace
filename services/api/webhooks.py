@@ -172,12 +172,14 @@ async def receive_webhook(
         # -----------------------------
         #  BROADCAST FINAL STATE
         # -----------------------------
-        await manager.broadcast(json.dumps({
+        await manager.broadcast_event(json.dumps({
             "id": event_id,
             "provider": provider,
             "event_type": event_type,
+            "route": route[2] if len(route) > 2 else None, 
+            "user_id": user_id,
             "status": status,
-            "route": route_id,
+            # "route": route_id,
             "attempt_count": attempt_count or 0,
             "created_at": datetime.utcnow().isoformat()
         }))

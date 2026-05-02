@@ -9,7 +9,7 @@ import { useWebhookStream } from "@/hooks/useWebhookStream"
 
 
 export default function LivePage() {
-  const events = useWebhookStream("live") // replace with token later
+  const events = useWebhookStream("/ws/events")
 
   return (
     <div className="min-h-screen bg-background">

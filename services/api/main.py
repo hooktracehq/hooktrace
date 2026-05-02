@@ -216,42 +216,71 @@ app.include_router(tunnels_router)
 app.include_router(aggregation_router)
 app.include_router(integrations_router)
 
+
+
 # -----------------------------
-# WebSocket
+# WebSocket Endpoints
 # -----------------------------
 
-
-
-@app.on_event("startup")
-def start_subscriber():
-    Thread(
-        target=start_redis_subscriber,
-        args=(manager,),
-        daemon=True,
-    ).start()
-
-
+#  GLOBAL EVENTS STREAM
 @app.websocket("/ws/events")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket, token='global')
+async def ws_global(websocket: WebSocket):
+    await manager.connect(websocket, "global", "user")
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket, token='global')
+        manager.disconnect(websocket, "global", "user")
 
 
+# EXISTING TOKEN STREAM FOR INTEGRATIONS
 @app.websocket("/ws/{token}")
-async def websocket_endpoint(websocket: WebSocket, token: str):
-    await manager.connect(websocket, token)
+async def ws_token(websocket: WebSocket, token: str):
+    await manager.connect(websocket, token, "token")
 
     try:
         while True:
             await websocket.receive_text()
-    except:
-        manager.disconnect(websocket,token)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, token, "token")
 
 
+# USER EVENTS STREAM
+@app.websocket("/ws/user/{user_id}")
+async def ws_user(websocket: WebSocket, user_id: str):
+    await manager.connect(websocket, user_id, "user")
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, user_id, "user")
+
+
+# PROVIDER EVENTS STREAM
+@app.websocket("/ws/provider/{provider}")
+async def ws_provider(websocket: WebSocket, provider: str):
+    await manager.connect(websocket, provider, "provider")
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, provider, "provider")
+
+
+# ROUTE EVENTS STREAM
+@app.websocket("/ws/route/{route}")
+async def ws_route(websocket: WebSocket, route: str):
+    await manager.connect(websocket, route, "route")
+
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, route, "route")
+
+        
 # -----------------------------
 # Metrics
 # -----------------------------

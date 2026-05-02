@@ -16,7 +16,7 @@ async def _subscriber_loop(manager):
             continue
 
         data = json.loads(message["data"])
-        await manager.broadcast(json.dumps(data))
+        await manager.broadcast_event(data)
 
 
 def start_redis_subscriber(manager):

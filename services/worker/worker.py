@@ -1482,14 +1482,43 @@ def match_event(rule, payload, provider):
         return False
 
 
-def publish_update(event_id: int, status: str, attempt: int = 0):
+# def publish_update(event_id: int, status: str, attempt: int = 0):
+#     redis_client.publish(
+#         "events:updates",
+#         json.dumps(
+#             {
+#                 "event_id": event_id,
+#                 "status": status,
+#                 "attempt_count": attempt,
+#             }
+#         ),
+#     )
+
+
+
+
+def publish_update(
+    event_id: int,
+    status: str,
+    attempt: int = 0,
+    user_id: str = None,
+    provider: str = None,
+    route: str = None,
+    token: str = None,
+    created_at: str = None,
+):
     redis_client.publish(
         "events:updates",
         json.dumps(
             {
-                "event_id": event_id,
+                "id": event_id,
                 "status": status,
                 "attempt_count": attempt,
+                "user_id": user_id,
+                "provider": provider,
+                "route": route,
+                "token": token,
+                "created_at": created_at,
             }
         ),
     )
@@ -1677,7 +1706,16 @@ def deliver_event(event_id: int):
 
                 db.commit()
                 events_delivered.inc()
-                publish_update(event_id, "delivered")
+                publish_update(
+    event_id=event_id,
+    status="delivered",
+    attempt=row["attempt_count"],
+    user_id=row["user_id"],
+    provider=row["provider"],
+    route=row["route"],
+    token=row["token"],
+    created_at=row["created_at"],
+)
 
                 return
 
@@ -1747,7 +1785,17 @@ def deliver_event(event_id: int):
                 events_delivered.inc()
 
             db.commit()
-            publish_update(event_id, "delivered")
+            status = "failed" if result["failed"] > 0 else "delivered"
+            publish_update(
+    event_id=event_id,
+    status=status,
+    attempt=row["attempt_count"],
+    user_id=row["user_id"],
+    provider=row["provider"],
+    route=row["route"],
+    token=row["token"],
+    created_at=row["created_at"],
+)
 
         except Exception as e:
             print(f"[worker] router error: {e}")
@@ -1765,6 +1813,17 @@ def deliver_event(event_id: int):
 
             db.commit()
             events_failed.inc()
+
+            publish_update(
+    event_id=event_id,
+    status="failed",
+    attempt=row["attempt_count"],
+    user_id=row["user_id"],
+    provider=row["provider"],
+    route=row["route"],
+    token=row["token"],
+    created_at=row["created_at"],
+)
 
     finally:
         db.close()
