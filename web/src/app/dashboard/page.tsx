@@ -74,13 +74,29 @@ async function getDLQCount() {
   }
 }
 
+async function getIntegrations() {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/integrations`,
+      { credentials: "include", cache: "no-store" }
+    )
+
+    if (!res.ok) return []
+
+    const data = await res.json()
+    return data.items || []
+  } catch {
+    return []
+  }
+}
+
 /* ---------------- PAGE ---------------- */
 
 export default async function Dashboard() {
   const user = await getCurrentUser()
   if (!user) redirect("/login")
 
-  // ✅ Proper typing (FIXED)
+  //  Proper typing 
   let totalEvents: unknown = []
   let delivered: unknown = []
   let failed: unknown = []
@@ -102,6 +118,7 @@ export default async function Dashboard() {
       events,
       endpoints,
       dlqCount,
+      integrations,
     ] = await Promise.all([
       promQuery("sum(hooktrace_webhooks_received_total)"),
       promQuery("sum(hooktrace_events_delivered_total)"),
@@ -114,6 +131,7 @@ export default async function Dashboard() {
       getRecentEvents(),
       getEndpoints(),
       getDLQCount(),
+      getIntegrations(),
     ])
   } catch (err) {
     console.error("Dashboard error:", err)
@@ -138,6 +156,8 @@ export default async function Dashboard() {
       label: "Retries",
       value: Array.isArray(retries) ? getScalar(retries) || 0 : 0,
     },
+
+
   ]
 
   const parsedSuccess = parseTimeSeries(successSeries)
@@ -145,6 +165,8 @@ export default async function Dashboard() {
 
   const safeEvents = Array.isArray(events) ? events : []
   const safeEndpoints = Array.isArray(endpoints) ? endpoints : []
+  
+  let integrations: Integration[] = []
 
   /* ---------------- Render ---------------- */
 
@@ -157,6 +179,7 @@ export default async function Dashboard() {
       successSeries={parsedSuccess}
       failureSeries={parsedFailure}
       dlqCount={dlqCount}
+      integrations={integrations}
     />
   )
 }
