@@ -378,7 +378,7 @@ class DeliveryTargetsRouter:
                 results["failed"] += 1
                 continue
 
-            # 🔁 execute + catch errors
+            #  execute + catch errors
             try:
                 result, attempts, success = execute_with_retry(worker,config,webhook_data)
                 status = "success" if success else "failed"
@@ -390,10 +390,10 @@ class DeliveryTargetsRouter:
                 status = "failed"
                 success = False
 
-            # 📊 update stats
+            #  update stats
             self._update_target_stats(target_id, success)
 
-            # 🧾 log delivery
+            #  log delivery
             db = SessionLocal()
             try:
                 db.execute(
@@ -407,7 +407,7 @@ class DeliveryTargetsRouter:
                             attempt,
                             created_at
                         )
-                        VALUES (:target_id, :status, :status_code, :response, :attempt, NOW())
+                        VALUES (:target_id, :status, :status_code, :event_id, :response, :attempt, NOW())
                     """),
                     {
                         "target_id": target_id,
@@ -422,7 +422,7 @@ class DeliveryTargetsRouter:
             finally:
                 db.close()
 
-            # 📦 result summary
+            #  result summary
             if success:
                 results["successful"] += 1
             else:

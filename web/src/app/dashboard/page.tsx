@@ -93,10 +93,10 @@ async function getIntegrations(): Promise<Integration[]> {
 
     const data = await res.json()
 
-    return (data.items || []).map((i: any) => ({
-      id: i.id,
-      name: i.name,
-      provider: i.provider ?? "unknown", // ✅ normalize
+    return (data.items || []).map((i: Integration) => ({
+      id: i.provider,
+      name: i.provider,
+      provider: i.provider, 
     }))
   } catch {
     return []
