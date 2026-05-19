@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 
 import {
@@ -111,19 +112,31 @@ export function AppSidebar() {
       <div className="flex h-14 items-center border-b border-border/70 px-5">
         <div className="flex items-center gap-3">
           
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          {/* <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Workflow className="h-4 w-4" />
-          </div>
+          </div> */}
 
-          <div>
-            <p className="text-sm font-semibold tracking-tight">
-              HOOKtrace
-            </p>
+          <div className="flex items-center gap-3">
+  
+  <Image
+    src="/logo.png"
+    alt="Hooktrace Logo"
+    width={34}
+    height={34}
+    className="rounded-lg object-contain"
+    priority
+  />
 
-            <p className="text-[11px] text-muted-foreground">
-              Event Operations
-            </p>
-          </div>
+  <div>
+    <p className="text-sm font-semibold tracking-tight">
+      Hooktrace
+    </p>
+
+    <p className="text-[11px] text-muted-foreground">
+      Event Operations
+    </p>
+  </div>
+</div>
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 
 import { getCurrentUser } from "@/lib/auth"
 
-import { EventWorkspace } from "@/components/events/event-workspace"
+import { EventsWorkspaceClient } from "@/components/events/events-workspace-client"
 
 import type { Event } from "@/types/event"
 
@@ -40,8 +40,8 @@ export default async function EventsPage() {
   const events = await getEvents()
 
   return (
-    <EventWorkspace
-      events={events}
-    />
+    <EventsWorkspaceClient
+  initialEvents={events}
+/>
   )
 }
