@@ -112,10 +112,13 @@ import {
 } from "lucide-react"
 
 import type { Event } from "@/types/event"
+import { motion } from "framer-motion"
 
 type Props = {
   event: Event | null
 }
+
+
 
 export function EventTimeline({
   event,
@@ -133,29 +136,69 @@ export function EventTimeline({
       label: "Webhook Received",
       icon: Radio,
       status: "success",
+      description:
+        "Incoming webhook accepted",
       time: event.created_at,
     },
+  
     {
-      label: "Validated",
+      label: "Signature Verified",
       icon: CheckCircle2,
       status: "success",
+      description:
+        "Payload authenticity verified",
       time: event.created_at,
     },
+  
     {
-      label: "Queued",
+      label: "Queued For Processing",
       icon: Database,
       status: "success",
+      description:
+        "Event queued internally",
       time: event.created_at,
     },
+  
     {
-      label: "Delivery Attempt",
+      label:
+        event.status === "failed"
+          ? "Delivery Failed"
+          : event.attempt_count &&
+            event.attempt_count > 1
+          ? `Retry Attempt #${event.attempt_count}`
+          : "Delivery Attempt",
+  
       icon:
         event.status === "failed"
           ? XCircle
           : RotateCcw,
-      status: event.status,
+  
+      status:
+        event.status === "failed"
+          ? "failed"
+          : "success",
+  
+      description:
+        event.status === "failed"
+          ? event.last_error ||
+            "Target delivery failed"
+          : "Delivery pipeline executed",
+  
       time: event.created_at,
     },
+  
+    ...(event.status === "failed"
+      ? [
+          {
+            label: "Moved To DLQ",
+            icon: XCircle,
+            status: "failed",
+            description:
+              "Event moved to dead letter queue",
+            time: event.created_at,
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -183,18 +226,33 @@ export function EventTimeline({
       {/* Timeline */}
       <div className="flex-1 overflow-auto p-6">
 
-        <div className="relative ml-4 border-l border-border">
+      <div className="relative ml-4 border-l border-border/70">
+      <div className="absolute left-0 top-0 h-full w-px bg-gradient-to-b from-primary/40 via-border to-transparent" />
 
           {timeline.map(
             (item, index) => {
               const Icon = item.icon
+              const isLast =
+              index === timeline.length - 1
 
               return (
-                <div
-                  key={item.label}
-                  className="relative mb-8 ml-6"
-                >
-
+                <motion.div
+  key={item.label}
+  initial={{
+    opacity: 0,
+    y: 10,
+  }}
+  animate={{
+    opacity: 1,
+    y: 0,
+  }}
+  transition={{
+    duration: 0.2,
+    delay: index * 0.05,
+  }}
+  
+>
+  
                   {/* Dot */}
                   <div
                     className="
@@ -226,7 +284,14 @@ export function EventTimeline({
                   </div>
 
                   {/* Card */}
-                  <div className="rounded-xl border border-border bg-surface-1 p-4">
+                 <div className={`
+  rounded-xl border p-4 transition-all
+  ${
+    isLast
+      ? "border-primary/30 bg-primary/5 shadow-[0_0_0_1px_rgba(249,115,22,0.12)]"
+      : "border-border bg-surface-1"
+  }
+`} >
 
                     <div className="flex items-start justify-between">
 
@@ -250,6 +315,9 @@ export function EventTimeline({
                             ).toLocaleString()}
                           </p>
 
+                          <p className="mt-2 text-xs text-muted-foreground">
+  {item.description}
+</p>
                         </div>
 
                       </div>
@@ -263,10 +331,11 @@ export function EventTimeline({
                           uppercase
                           tracking-wide
                           ${
-                            item.status ===
-                            "failed"
-                              ? "bg-red-500/10 text-red-400"
-                              : "bg-emerald-500/10 text-emerald-400"
+                            item.status === "failed"
+                            ? "bg-red-500/10 text-red-400"
+                            : item.status === "pending"
+                            ? "bg-amber-500/10 text-amber-400"
+                            : "bg-emerald-500/10 text-emerald-400"
                           }
                         `}
                       >
@@ -277,8 +346,10 @@ export function EventTimeline({
 
                   </div>
 
-                </div>
+                </motion.div>
+                
               )
+             
             }
           )}
 
