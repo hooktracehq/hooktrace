@@ -58,6 +58,14 @@ import type { Event } from "@/types/event"
 
 import { EventRow } from "./event-row"
 
+import {
+  useRef,
+} from "react"
+
+import {
+  useVirtualizer,
+} from "@tanstack/react-virtual"
+
 type Props = {
   events: Event[]
   selectedEvent: Event | null
@@ -68,7 +76,22 @@ export function EventStream({
   events,
   selectedEvent,
   onSelect,
-}: Props) {
+}: Props)
+{
+  const parentRef =
+  useRef<HTMLDivElement>(null)
+
+const virtualizer =
+  useVirtualizer({
+    count: events.length,
+    getScrollElement: () =>
+      parentRef.current,
+    estimateSize: () => 72,
+    overscan: 8,
+  })
+
+const items =
+  virtualizer.getVirtualItems()
   return (
     <div className="flex h-full flex-col overflow-hidden">
 
@@ -90,15 +113,42 @@ export function EventStream({
       )}
 
       {/* Rows */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+  ref={parentRef}
+  className="flex-1 overflow-y-auto"
+>
 
-        {events.map(
-          (event, index) => (
+  <div
+    style={{
+      height:
+        virtualizer.getTotalSize(),
+      position: "relative",
+    }}
+  >
+
+    {items.map(
+      (virtualRow) => {
+        const event =
+          events[
+            virtualRow.index
+          ]
+
+        if (!event)
+          return null
+
+        return (
+          <div
+            key={event.id}
+            className="absolute left-0 top-0 w-full"
+            style={{
+              transform: `translateY(${virtualRow.start}px)`,
+            }}
+          >
+
             <motion.div
-              key={event.id}
               initial={{
                 opacity: 0,
-                y: -8,
+                y: -6,
               }}
               animate={{
                 opacity: 1,
@@ -106,10 +156,9 @@ export function EventStream({
               }}
               transition={{
                 duration: 0.18,
-                delay:
-                  index * 0.015,
               }}
             >
+
               <EventRow
                 event={event}
                 selected={
@@ -120,10 +169,15 @@ export function EventStream({
                   onSelect(event)
                 }
               />
+
             </motion.div>
-          )
-        )}
-      </div>
+
+          </div>
+        )
+      }
+    )}
+  </div>
+</div>
     </div>
   )
 }
