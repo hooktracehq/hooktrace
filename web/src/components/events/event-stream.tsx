@@ -1,70 +1,19 @@
-// "use client"
-
-// import type { Event } from "@/types/event"
-
-// import { EventRow } from "./event-row"
-
-// type Props = {
-//   events: Event[]
-//   selectedEvent: Event | null
-//   onSelect: (event: Event) => void
-// }
-
-// export function EventStream({
-//   events,
-//   selectedEvent,
-//   onSelect,
-// }: Props) {
-//   return (
-//     <div className="flex h-full flex-col overflow-hidden">
-
-//       {/* Header */}
-//       <div className="grid h-11 grid-cols-[120px_1fr_120px_120px_140px] items-center border-b border-border px-4 text-[11px] uppercase tracking-wide text-muted-foreground">
-
-//         <div>Status</div>
-//         <div>Route</div>
-//         <div>Provider</div>
-//         <div>Attempts</div>
-//         <div>Created</div>
-//       </div>
-
-//       {/* Rows */}
-//       <div className="flex-1 overflow-y-auto">
-
-//         {events.map((event) => (
-//           <EventRow
-//             key={event.id}
-//             event={event}
-//             selected={
-//               selectedEvent?.id === event.id
-//             }
-//             onClick={() =>
-//               onSelect(event)
-//             }
-//           />
-//         ))}
-//       </div>
-//     </div>
-//   )
-// }
-
-
-
 "use client"
 
 import { motion } from "framer-motion"
 
-import type { Event } from "@/types/event"
-
-import { EventRow } from "./event-row"
-
 import {
+  useEffect,
   useRef,
 } from "react"
 
 import {
   useVirtualizer,
 } from "@tanstack/react-virtual"
+
+import type { Event } from "@/types/event"
+
+import { EventRow } from "./event-row"
 
 type Props = {
   events: Event[]
@@ -76,22 +25,40 @@ export function EventStream({
   events,
   selectedEvent,
   onSelect,
-}: Props)
-{
+}: Props) {
+
   const parentRef =
-  useRef<HTMLDivElement>(null)
+    useRef<HTMLDivElement>(null)
 
-const virtualizer =
-  useVirtualizer({
-    count: events.length,
-    getScrollElement: () =>
-      parentRef.current,
-    estimateSize: () => 72,
-    overscan: 8,
-  })
+  const shouldAutoScroll =
+    useRef(true)
 
-const items =
-  virtualizer.getVirtualItems()
+  const virtualizer =
+    useVirtualizer({
+      count: events.length,
+
+      getScrollElement: () =>
+        parentRef.current,
+
+      estimateSize: () => 72,
+
+      overscan: 8,
+    })
+
+  const items =
+    virtualizer.getVirtualItems()
+
+  useEffect(() => {
+    if (
+      shouldAutoScroll.current
+    ) {
+      virtualizer.scrollToIndex(0)
+    }
+  }, [
+    events,
+    virtualizer,
+  ])
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
 
@@ -103,6 +70,7 @@ const items =
         <div>Provider</div>
         <div>Attempts</div>
         <div>Created</div>
+
       </div>
 
       {/* Empty */}
@@ -114,70 +82,83 @@ const items =
 
       {/* Rows */}
       <div
-  ref={parentRef}
-  className="flex-1 overflow-y-auto"
->
+        ref={parentRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={() => {
+          const el =
+            parentRef.current
 
-  <div
-    style={{
-      height:
-        virtualizer.getTotalSize(),
-      position: "relative",
-    }}
-  >
+          if (!el) return
 
-    {items.map(
-      (virtualRow) => {
-        const event =
-          events[
-            virtualRow.index
-          ]
+          shouldAutoScroll.current =
+            el.scrollTop < 80
+        }}
+      >
 
-        if (!event)
-          return null
+        <div
+          style={{
+            height:
+              virtualizer.getTotalSize(),
+            position: "relative",
+          }}
+        >
 
-        return (
-          <div
-            key={event.id}
-            className="absolute left-0 top-0 w-full"
-            style={{
-              transform: `translateY(${virtualRow.start}px)`,
-            }}
-          >
+          {items.map(
+            (virtualRow) => {
 
-            <motion.div
-              initial={{
-                opacity: 0,
-                y: -6,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.18,
-              }}
-            >
+              const event =
+                events[
+                  virtualRow.index
+                ]
 
-              <EventRow
-                event={event}
-                selected={
-                  selectedEvent?.id ===
-                  event.id
-                }
-                onClick={() =>
-                  onSelect(event)
-                }
-              />
+              if (!event)
+                return null
 
-            </motion.div>
+              return (
+                <div
+                  key={event.id}
+                  className="absolute left-0 top-0 w-full"
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
 
-          </div>
-        )
-      }
-    )}
-  </div>
-</div>
+                  <motion.div
+                    initial={{
+                      opacity: 0,
+                      y: -6,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                    }}
+                    transition={{
+                      duration: 0.18,
+                    }}
+                  >
+
+                    <EventRow
+                      event={event}
+                      selected={
+                        selectedEvent?.id ===
+                        event.id
+                      }
+                      onClick={() =>
+                        onSelect(event)
+                      }
+                    />
+
+                  </motion.div>
+
+                </div>
+              )
+            }
+          )}
+
+        </div>
+
+      </div>
+
     </div>
   )
 }

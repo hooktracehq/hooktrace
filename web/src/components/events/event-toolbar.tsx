@@ -1,76 +1,3 @@
-// "use client"
-
-// import {
-//   Activity,
-//   Search,
-//   Wifi,
-// } from "lucide-react"
-
-// type Props = {
-//   query: string
-//   setQuery: (value: string) => void
-//   total: number
-// }
-
-// export function EventToolbar({
-//   query,
-//   setQuery,
-//   total,
-// }: Props) {
-//   return (
-//     <div className="panel flex h-14 items-center justify-between px-4">
-
-//       {/* Left */}
-//       <div className="flex items-center gap-3">
-
-//         <div className="flex items-center gap-2">
-//           <Activity className="h-4 w-4 text-primary" />
-
-//           <h1 className="text-sm font-semibold">
-//             Event Workspace
-//           </h1>
-//         </div>
-
-//         <div className="h-4 w-px bg-border" />
-
-//         <span className="text-xs text-muted-foreground">
-//           {total} events
-//         </span>
-//       </div>
-
-//       {/* Right */}
-//       <div className="flex items-center gap-3">
-
-//         {/* Search */}
-//         <div className="flex h-9 w-[280px] items-center gap-2 rounded-lg border border-border bg-surface-1 px-3">
-
-//           <Search className="h-4 w-4 text-muted-foreground" />
-
-//           <input
-//             value={query}
-//             onChange={(e) =>
-//               setQuery(e.target.value)
-//             }
-//             placeholder="Search events..."
-//             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-//           />
-//         </div>
-
-//         {/* Realtime */}
-//         <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
-
-//           <Wifi className="h-3.5 w-3.5 text-live" />
-
-//           <span className="text-xs text-muted-foreground">
-//             Live
-//           </span>
-//         </div>
-//       </div>
-//     </div>
-//   )
-// }
-
-
 "use client"
 
 import {
@@ -78,7 +5,6 @@ import {
   Play,
   Search,
   Wifi,
-  Funnel
 } from "lucide-react"
 
 import { useEventsStore } from "@/app/stores/events-store"
@@ -111,6 +37,7 @@ export function EventToolbar({
   provider,
   setProvider,
 }: Props) {
+
   const paused =
     useEventsStore(
       (s) => s.paused
@@ -124,6 +51,16 @@ export function EventToolbar({
   const togglePause =
     useEventsStore(
       (s) => s.togglePause
+    )
+
+  const buffered =
+    useEventsStore(
+      (s) => s.bufferedEvents
+    )
+
+  const flushBuffer =
+    useEventsStore(
+      (s) => s.flushBuffer
     )
 
   return (
@@ -149,79 +86,79 @@ export function EventToolbar({
       </div>
 
       {/* Right */}
-
-      {/* Status Filter */}
-<select
-  value={status}
-  onChange={(e) =>
-    setStatus(e.target.value)
-  }
-  className="
-    rounded-lg border border-border
-    bg-surface-1 px-3 py-2
-    text-sm text-foreground
-    outline-none
-  "
->
-  <option value="">
-    All Status
-  </option>
-
-  <option value="delivered">
-    Delivered
-  </option>
-
-  <option value="failed">
-    Failed
-  </option>
-
-  <option value="pending">
-    Pending
-  </option>
-
-  <option value="retrying">
-    Retrying
-  </option>
-</select>
-
-{/* Provider Filter */}
-<select
-  value={provider}
-  onChange={(e) =>
-    setProvider(e.target.value)
-  }
-  className="
-    rounded-lg border border-border
-    bg-surface-1 px-3 py-2
-    text-sm text-foreground
-    outline-none
-  "
->
-  <option value="">
-    All Providers
-  </option>
-
-  <option value="github">
-    GitHub
-  </option>
-
-  <option value="stripe">
-    Stripe
-  </option>
-
-  <option value="slack">
-    Slack
-  </option>
-
-  <option value="discord">
-    Discord
-  </option>
-
-  <option value="notion">
-    Notion
-  </option>
-</select>
       <div className="flex items-center gap-3">
+
+        {/* Status Filter */}
+        <select
+          value={status}
+          onChange={(e) =>
+            setStatus(e.target.value)
+          }
+          className="
+            rounded-lg border border-border
+            bg-surface-1 px-3 py-2
+            text-sm text-foreground
+            outline-none
+          "
+        >
+          <option value="">
+            All Status
+          </option>
+
+          <option value="delivered">
+            Delivered
+          </option>
+
+          <option value="failed">
+            Failed
+          </option>
+
+          <option value="pending">
+            Pending
+          </option>
+
+          <option value="retrying">
+            Retrying
+          </option>
+        </select>
+
+        {/* Provider Filter */}
+        <select
+          value={provider}
+          onChange={(e) =>
+            setProvider(e.target.value)
+          }
+          className="
+            rounded-lg border border-border
+            bg-surface-1 px-3 py-2
+            text-sm text-foreground
+            outline-none
+          "
+        >
+          <option value="">
+            All Providers
+          </option>
+
+          <option value="github">
+            GitHub
+          </option>
+
+          <option value="stripe">
+            Stripe
+          </option>
+
+          <option value="slack">
+            Slack
+          </option>
+
+          <option value="discord">
+            Discord
+          </option>
+
+          <option value="notion">
+            Notion
+          </option>
+        </select>
 
         {/* Search */}
         <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
@@ -290,6 +227,23 @@ export function EventToolbar({
             </>
           )}
         </button>
+
+        {/* Buffer */}
+        {buffered.length > 0 && paused && (
+          <button
+            onClick={flushBuffer}
+            className="
+              rounded-lg border border-primary/20
+              bg-primary/10
+              px-3 py-2
+              text-sm text-primary
+              transition-colors
+              hover:bg-primary/20
+            "
+          >
+            {buffered.length} buffered
+          </button>
+        )}
 
       </div>
     </div>
