@@ -78,20 +78,38 @@ import {
   Play,
   Search,
   Wifi,
+  Funnel
 } from "lucide-react"
 
 import { useEventsStore } from "@/app/stores/events-store"
 
 type Props = {
   count: number
+
   query: string
-  setQuery: React.Dispatch<React.SetStateAction<string>>
+  setQuery: React.Dispatch<
+    React.SetStateAction<string>
+  >
+
+  status: string
+  setStatus: React.Dispatch<
+    React.SetStateAction<string>
+  >
+
+  provider: string
+  setProvider: React.Dispatch<
+    React.SetStateAction<string>
+  >
 }
 
 export function EventToolbar({
   count,
   query,
   setQuery,
+  status,
+  setStatus,
+  provider,
+  setProvider,
 }: Props) {
   const paused =
     useEventsStore(
@@ -131,6 +149,78 @@ export function EventToolbar({
       </div>
 
       {/* Right */}
+
+      {/* Status Filter */}
+<select
+  value={status}
+  onChange={(e) =>
+    setStatus(e.target.value)
+  }
+  className="
+    rounded-lg border border-border
+    bg-surface-1 px-3 py-2
+    text-sm text-foreground
+    outline-none
+  "
+>
+  <option value="">
+    All Status
+  </option>
+
+  <option value="delivered">
+    Delivered
+  </option>
+
+  <option value="failed">
+    Failed
+  </option>
+
+  <option value="pending">
+    Pending
+  </option>
+
+  <option value="retrying">
+    Retrying
+  </option>
+</select>
+
+{/* Provider Filter */}
+<select
+  value={provider}
+  onChange={(e) =>
+    setProvider(e.target.value)
+  }
+  className="
+    rounded-lg border border-border
+    bg-surface-1 px-3 py-2
+    text-sm text-foreground
+    outline-none
+  "
+>
+  <option value="">
+    All Providers
+  </option>
+
+  <option value="github">
+    GitHub
+  </option>
+
+  <option value="stripe">
+    Stripe
+  </option>
+
+  <option value="slack">
+    Slack
+  </option>
+
+  <option value="discord">
+    Discord
+  </option>
+
+  <option value="notion">
+    Notion
+  </option>
+</select>
       <div className="flex items-center gap-3">
 
         {/* Search */}

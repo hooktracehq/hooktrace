@@ -115,32 +115,65 @@ export function EventWorkspace({
   
 
   const [query, setQuery] =
-    useState("")
+  useState("")
+  const [status, setStatus] =
+  useState("")
 
-  const filteredEvents = useMemo(() => {
-    if (!query) return events
+const [provider, setProvider] =
+  useState("")
 
-    return events.filter((event) => {
-      const search =
-        `${event.route} ${event.provider} ${event.event_type}`
-          .toLowerCase()
-
-      return search.includes(
-        query.toLowerCase()
-      )
-    })
-  }, [events, query])
+    const filteredEvents = useMemo(() => {
+      return events.filter((event) => {
+    
+        // Search
+        const search =
+          `${event.route} ${event.provider} ${event.event_type}`
+            .toLowerCase()
+    
+        const matchesSearch =
+          search.includes(
+            query.toLowerCase()
+          )
+    
+        // Status
+        const matchesStatus =
+          !status ||
+          event.status === status
+    
+        // Provider
+        const matchesProvider =
+          !provider ||
+          event.provider === provider
+    
+        return (
+          matchesSearch &&
+          matchesStatus &&
+          matchesProvider
+        )
+      })
+    }, [
+      events,
+      query,
+      status,
+      provider,
+    ])
 
   return (
     <div className="flex h-[calc(100vh-92px)] flex-col overflow-hidden">
 
       {/* Toolbar */}
       <div className="mb-4">
-        <EventToolbar
-          query={query}
-          setQuery={setQuery}
-          count={filteredEvents.length}
-        />
+      <EventToolbar
+  query={query}
+  setQuery={setQuery}
+  count={filteredEvents.length}
+
+  status={status}
+  setStatus={setStatus}
+
+  provider={provider}
+  setProvider={setProvider}
+/>
       </div>
 
       {/* Workspace */}
