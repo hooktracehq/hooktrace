@@ -4,8 +4,7 @@ import { useEffect } from "react"
 
 import { toast } from "sonner"
 
-import { useRealtimeStore } from "@/stores/realtime-store"
-
+import { useRealtimeStore } from "@/app/stores/realtime-store"
 export function useRealtimeSystem() {
   const setConnected =
     useRealtimeStore(
