@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { toast } from "sonner"
 
 import { useRealtimeStore } from "@/app/stores/realtime-store"
+
 export function useRealtimeSystem() {
   const setConnected =
     useRealtimeStore(
@@ -34,6 +35,9 @@ export function useRealtimeSystem() {
       | NodeJS.Timeout
       | undefined
 
+    let intentionallyClosed =
+      false
+
     function connect() {
       setReconnecting(true)
 
@@ -56,15 +60,13 @@ export function useRealtimeSystem() {
           )
         )
 
-        toast.success(
-          "Realtime connected"
-        )
+        // No success toast on every refresh
 
         addActivity({
           id: crypto.randomUUID(),
-          level: "success",
+          level: "info",
           message:
-            "websocket connected",
+            "realtime active",
           timestamp:
             new Date().toISOString(),
         })
@@ -81,6 +83,7 @@ export function useRealtimeSystem() {
 
           addActivity({
             id: crypto.randomUUID(),
+
             level:
               data.status ===
               "failed"
@@ -92,10 +95,20 @@ export function useRealtimeSystem() {
             timestamp:
               new Date().toISOString(),
           })
-        } catch {}
+        } catch {
+          console.error(
+            "Invalid websocket payload"
+          )
+        }
       }
 
       ws.onclose = () => {
+        if (
+          intentionallyClosed
+        ) {
+          return
+        }
+
         setConnected(false)
 
         setReconnecting(true)
@@ -119,11 +132,20 @@ export function useRealtimeSystem() {
             3000
           )
       }
+
+      ws.onerror = () => {
+        console.error(
+          "WebSocket error"
+        )
+      }
     }
 
     connect()
 
     return () => {
+      intentionallyClosed =
+        true
+
       ws?.close()
 
       if (
