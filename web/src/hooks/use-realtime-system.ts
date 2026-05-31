@@ -44,6 +44,7 @@ export function useRealtimeSystem() {
       ws = new WebSocket(
         "ws://localhost:3001/ws/events"
       )
+      ws.onerror = () => console.error("WebSocket error")
 
       const started =
         performance.now()

@@ -9,7 +9,7 @@ import {
   RotateCcw,
 } from "lucide-react"
 
-import { useRealtimeStore } from "@/stores/realtime-store"
+import { useRealtimeStore } from "@/app/stores/realtime-store"
 
 function Icon({
   level,

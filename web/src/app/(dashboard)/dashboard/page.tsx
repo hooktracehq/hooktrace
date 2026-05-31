@@ -10,7 +10,7 @@ import { QuickActions } from "@/components/dashboard/quick-actions"
 
 import { SystemStatus } from "@/components/dashboard/system-status"
 
-import { ActivityFeed } from "@/components/dashboard/activity-feed"
+import { ActivityFeed } from "@/components/system/activity-feed"
 
 import { IncidentBanner } from "@/components/dashboard/incident-banner"
 
