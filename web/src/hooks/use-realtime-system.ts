@@ -5,8 +5,13 @@ import { useEffect } from "react"
 import { toast } from "sonner"
 
 import { useRealtimeStore } from "@/app/stores/realtime-store"
+import { useEventsStore } from "@/app/stores/events-store"
+
+import type { Event } from "@/types/event"
 
 export function useRealtimeSystem() {
+
+  // Realtime Store
   const setConnected =
     useRealtimeStore(
       (s) => s.setConnected
@@ -27,7 +32,19 @@ export function useRealtimeSystem() {
       (s) => s.addActivity
     )
 
+  // Events Store
+  const addEvent =
+    useEventsStore(
+      (s) => s.addEvent
+    )
+
+  const setEventsConnected =
+    useEventsStore(
+      (s) => s.setConnected
+    )
+
   useEffect(() => {
+
     let ws: WebSocket | null =
       null
 
@@ -39,29 +56,29 @@ export function useRealtimeSystem() {
       false
 
     function connect() {
+
       setReconnecting(true)
 
       ws = new WebSocket(
         "ws://localhost:3001/ws/events"
       )
-      ws.onerror = () => console.error("WebSocket error") 
 
       const started =
         performance.now()
 
       ws.onopen = () => {
+
         setConnected(true)
+        setEventsConnected(true)
 
         setReconnecting(false)
 
         setLatency(
           Math.floor(
             performance.now() -
-              started
+            started
           )
         )
-
-        // No success toast on every refresh
 
         addActivity({
           id: crypto.randomUUID(),
@@ -74,14 +91,20 @@ export function useRealtimeSystem() {
       }
 
       ws.onmessage = (
-        event
+        message
       ) => {
+
         try {
-          const data =
+
+          const data: Event =
             JSON.parse(
-              event.data
+              message.data
             )
 
+          // Event Stream
+          addEvent(data)
+
+          // Activity Feed
           addActivity({
             id: crypto.randomUUID(),
 
@@ -91,19 +114,24 @@ export function useRealtimeSystem() {
                 ? "error"
                 : "info",
 
-            message: `${data.provider} ${data.event_type}`,
+            message:
+              `${data.provider} ${data.event_type}`,
 
             timestamp:
               new Date().toISOString(),
           })
+
         } catch {
+
           console.error(
             "Invalid websocket payload"
           )
+
         }
       }
 
       ws.onclose = () => {
+
         if (
           intentionallyClosed
         ) {
@@ -111,6 +139,7 @@ export function useRealtimeSystem() {
         }
 
         setConnected(false)
+        setEventsConnected(false)
 
         setReconnecting(true)
 
@@ -135,15 +164,23 @@ export function useRealtimeSystem() {
       }
 
       ws.onerror = () => {
-        console.error(
-          "WebSocket error"
-        )
+
+        if (
+          process.env.NODE_ENV ===
+          "production"
+        ) {
+          console.error(
+            "WebSocket error"
+          )
+        }
+
       }
     }
 
     connect()
 
     return () => {
+
       intentionallyClosed =
         true
 
@@ -157,9 +194,12 @@ export function useRealtimeSystem() {
         )
       }
     }
+
   }, [
     addActivity,
+    addEvent,
     setConnected,
+    setEventsConnected,
     setLatency,
     setReconnecting,
   ])

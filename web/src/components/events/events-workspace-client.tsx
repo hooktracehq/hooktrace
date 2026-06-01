@@ -6,7 +6,7 @@ import { EventWorkspace } from "./event-workspace"
 
 import { useEventsStore } from "@/app/stores/events-store"
 
-import { useLiveEvents } from "@/hooks/use-live-events"
+// import { useLiveEvents } from "@/hooks/use-live-events"
 
 import type { Event } from "@/types/event"
 
@@ -44,7 +44,7 @@ export function EventsWorkspaceClient({
   }, [initialEvents, setEvents])
 
   // Start websocket
-  useLiveEvents()
+  // useLiveEvents()
 
   return (
     <EventWorkspace
