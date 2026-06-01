@@ -5,7 +5,7 @@ import {
   WifiOff,
 } from "lucide-react"
 
-import { useRealtimeStore } from "@/stores/realtime-store"
+import { useRealtimeStore } from "@/app/stores/realtime-store"
 
 export function LiveIndicator() {
   const connected =
