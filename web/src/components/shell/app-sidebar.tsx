@@ -13,6 +13,7 @@ import {
   Database,
   GitBranch,
   LayoutDashboard,
+  PlugZap,
   Radio,
   ShieldAlert,
   Waypoints,
@@ -48,6 +49,11 @@ const sections = [
     items: [
       {
         label: "Connections",
+        href: "/connections",
+        icon: PlugZap,
+      },
+      {
+        label: "Routes",
         href: "/routes",
         icon: Cable,
       },
