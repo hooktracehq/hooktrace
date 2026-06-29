@@ -1,51 +1,94 @@
-"use client"
+// "use client"
 
-import { useEffect, useState } from "react"
-import { EventsTable } from "@/components/events/event-table"
-import { Event } from "@/types/event"
+// import { useEffect, useState } from "react"
+// import { useQueryClient } from "@tanstack/react-query"
 
-type Props = {
-  initialEvents: Event[]
-  status?: string
-}
+// import { EventsTable } from "@/components/events/event-table"
 
-export function EventsLiveWrapper({ initialEvents, status }: Props) {
-  const [events, setEvents] = useState<Event[]>(initialEvents)
-  const [newIds, setNewIds] = useState<Set<number>>(new Set())
+// import { useEvents } from "@/hooks/use-events"
 
-  //  Always sync with server data
-  useEffect(() => {
-    setEvents(initialEvents)
-  }, [initialEvents])
+// import type { Event } from "@/types/event"
+// import type { EventsResponse } from "@/lib/services/events"
 
-  //  ONLY enable websocket for "All Events"
-  useEffect(() => {
-    if (status) return 
+// type Props = {
+//   initialEvents: Event[]
+//   status?: string
+// }
 
-    const ws = new WebSocket("ws://localhost:3001/ws/events")
+// export function EventsLiveWrapper({
+//   initialEvents,
+//   status,
+// }: Props) {
+//   const queryClient = useQueryClient()
 
-    ws.onmessage = (event) => {
-      const newEvent: Event = JSON.parse(event.data)
+//   const { data } = useEvents(
+//     status
+//       ? { status }
+//       : undefined
+//   )
 
-      setEvents((prev) => [newEvent, ...prev])
+//   const events =
+//     data?.items ??
+//     initialEvents
 
-      setNewIds((prev) => {
-        const updated = new Set(prev)
-        updated.add(newEvent.id)
-        return updated
-      })
+//   const [newIds, setNewIds] =
+//     useState<Set<number>>(
+//       new Set()
+//     )
 
-      setTimeout(() => {
-        setNewIds((prev) => {
-          const copy = new Set(prev)
-          copy.delete(newEvent.id)
-          return copy
-        })
-      }, 2000)
-    }
+//   useEffect(() => {
+//     if (status) return
 
-    return () => ws.close()
-  }, [status])
+//     const ws = new WebSocket(
+//       `${process.env.NEXT_PUBLIC_WS_URL}/ws/events`
+//     )
 
-  return <EventsTable events={events} newIds={newIds} />
-}
+//     ws.onmessage = (message) => {
+//       const event: Event = JSON.parse(
+//         message.data
+//       )
+
+//       queryClient.setQueryData(
+//         ["events"],
+//         (old: EventsResponse | undefined) => {
+//           if (!old) {
+//             return {
+//               items: [event],
+//             }
+//           }
+
+//           return {
+//             ...old,
+//             items: [
+//               event,
+//               ...old.items,
+//             ],
+//           }
+//         }
+//       )
+
+//       setNewIds((prev) => {
+//         const next = new Set(prev)
+//         next.add(event.id)
+//         return next
+//       })
+
+//       setTimeout(() => {
+//         setNewIds((prev) => {
+//           const next = new Set(prev)
+//           next.delete(event.id)
+//           return next
+//         })
+//       }, 2000)
+//     }
+
+//     return () => ws.close()
+//   }, [queryClient, status])
+
+//   return (
+//     <EventsTable
+//       events={events}
+//       newIds={newIds}
+//     />
+//   )
+// }

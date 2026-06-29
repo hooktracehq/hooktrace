@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/next"
 import { GoogleAnalytics } from "@/components/analytics/ga"
+import { QueryProvider } from "@/providers/query-provider"
 import { Toaster } from "sonner"
 
 import "./globals.css";
@@ -64,7 +65,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background font-sans antialiased">
-      <ThemeProvider>{children}
+      <ThemeProvider><QueryProvider>{children}</QueryProvider>  
       <Toaster richColors position="top-right" />
       <Analytics />
       <GoogleAnalytics />

@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect } from "react"
-
-import { EventWorkspace } from "./event-workspace"
+import { useEvents } from "@/hooks/use-events"
+import { useLiveEvents } from "@/hooks/use-live-events"
 
 import { useEventsStore } from "@/app/stores/events-store"
 
-// import { useLiveEvents } from "@/hooks/use-live-events"
+import { EventWorkspace } from "./event-workspace"
 
 import type { Event } from "@/types/event"
 
@@ -18,39 +17,39 @@ export function EventsWorkspaceClient({
   initialEvents,
 }: Props) {
 
+  const { data, isLoading } =
+    useEvents()
+
+  useLiveEvents()
+
   const events =
+    data?.items ??
+    initialEvents
+
+  const selectedEventId =
     useEventsStore(
-      (s) => s.events
+      (s) => s.selectedEventId
     )
 
   const selectedEvent =
-    useEventsStore(
-      (s) => s.selectedEvent
-    )
-
-  const setEvents =
-    useEventsStore(
-      (s) => s.setEvents
-    )
+    events.find(
+      (e) =>
+        e.id === selectedEventId
+    ) ?? null
 
   const selectEvent =
     useEventsStore(
       (s) => s.selectEvent
     )
 
-  // Hydrate initial server data
-  useEffect(() => {
-    setEvents(initialEvents)
-  }, [initialEvents, setEvents])
-
-  // Start websocket
-  // useLiveEvents()
-
   return (
     <EventWorkspace
       events={events}
+      loading={isLoading}
       selectedEvent={selectedEvent}
-      onSelectEvent={selectEvent}
+      onSelectEvent={(event) =>
+        selectEvent(event.id)
+      }
     />
   )
 }

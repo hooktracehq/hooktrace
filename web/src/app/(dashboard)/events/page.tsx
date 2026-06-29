@@ -17,7 +17,7 @@ async function getEvents(): Promise<Event[]> {
         cache: "no-store",
       }
     )
-
+    console.log(res)
     if (!res.ok) {
       return []
     }
@@ -38,6 +38,7 @@ export default async function EventsPage() {
   }
 
   const events = await getEvents()
+  console.log("Server Events:", events.length)
 
   return (
     <EventsWorkspaceClient
@@ -45,3 +46,30 @@ export default async function EventsPage() {
 />
   )
 }
+
+
+
+// export const dynamic = "force-dynamic"
+
+// import { redirect } from "next/navigation"
+
+// import { getCurrentUser } from "@/lib/auth"
+// import { getEvents } from "@/lib/services/events"
+
+// import { EventsWorkspaceClient } from "@/components/events/events-workspace-client"
+
+// export default async function EventsPage() {
+//   const user = await getCurrentUser()
+
+//   if (!user) {
+//     redirect("/login")
+//   }
+
+//   const data = await getEvents()
+
+//   return (
+//     <EventsWorkspaceClient
+//       initialEvents={data?.items ?? []}
+//     />
+//   )
+// }

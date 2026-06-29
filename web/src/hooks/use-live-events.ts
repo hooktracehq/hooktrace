@@ -1,55 +1,65 @@
-// "use client"
+"use client"
 
-// import { useEffect } from "react"
+import { useEffect } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
-// import { useEventsStore } from "@/app/stores/events-store"
+import type { Event } from "@/types/event"
+import type { EventsResponse } from "@/lib/services/events"
 
-// import type { Event } from "@/types/event"
+export function useLiveEvents() {
+  const queryClient =
+    useQueryClient()
 
-// export function useLiveEvents() {
-//   const addEvent =
-//     useEventsStore(
-//       (s) => s.addEvent
-//     )
+  useEffect(() => {
+    const ws = new WebSocket(
+      `${process.env.NEXT_PUBLIC_WS_URL}/ws/events`
+    )
 
-//   const setConnected =
-//     useEventsStore(
-//       (s) => s.setConnected
-//     )
+    ws.onopen = () => {
+      console.log(
+        "🟢 Events websocket connected"
+      )
+    }
 
-//   useEffect(() => {
-//     const ws =
-//       new WebSocket(
-//         "ws://localhost:3001/ws/events"
-//       )
+    ws.onmessage = (message) => {
+      const event: Event = JSON.parse(
+        message.data
+      )
 
-//     ws.onopen = () => {
-//       setConnected(true)
-//     }
+      queryClient.setQueryData(
+        ["events"],
+        (
+          old:
+            | EventsResponse
+            | undefined
+        ) => {
+          if (!old) {
+            return {
+              items: [event],
+              limit: 50,
+              offset: 0,
+            }
+          }
 
-//     ws.onclose = () => {
-//       setConnected(false)
-//     }
+          return {
+            ...old,
+            items: [
+              event,
+              ...old.items,
+            ],
+          }
+        }
+      )
+    }
 
-//     ws.onerror = () => {
-//       setConnected(false)
-//     }
+    ws.onclose = () => {
+      console.log(
+        "🔴 Events websocket disconnected"
+      )
+    }
 
-//     ws.onmessage = (
-//       message
-//     ) => {
-//       try {
-//         const event: Event =
-//           JSON.parse(
-//             message.data
-//           )
-
-//         addEvent(event)
-//       } catch {}
-//     }
-
-//     return () => {
-//       ws.close()
-//     }
-//   }, [addEvent, setConnected])
-// }
+    return () => {
+      ws.close()
+    }
+  }, [queryClient])
+}

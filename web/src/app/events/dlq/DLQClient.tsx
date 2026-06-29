@@ -1,11 +1,11 @@
 
 "use client"
 
-import { useState } from "react"
 import { ReplayButton } from "@/components/events/replay-button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { motion, AnimatePresence } from "framer-motion"
 import { AlertTriangle } from "lucide-react"
+import { useEvents } from "@/hooks/use-events"
 
 type WebhookEvent = {
   id: number
@@ -21,7 +21,15 @@ export default function DLQClient({
 }: {
   initialEvents: WebhookEvent[]
 }) {
-  const [events] = useState(initialEvents)
+  // const [events] = useState(initialEvents)
+
+  const { data } = useEvents({
+    status: "dlq",
+  })
+  
+  const events =
+    data?.items ??
+    initialEvents
 
   //  group by route
   const grouped = events.reduce<Record<string, WebhookEvent[]>>(
