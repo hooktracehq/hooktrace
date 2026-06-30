@@ -1,6 +1,6 @@
 "use client"
 
-import { Layers3, Search } from "lucide-react"
+import { Layers3, Search, X } from "lucide-react"
 
 type Props = {
   query: string
@@ -12,11 +12,14 @@ export function AggregationToolbar({
   setQuery,
 }: Props) {
   return (
-    <div className="flex items-center justify-between border-b border-border px-5 py-4">
+    <div className="flex items-center justify-between border-b border-border bg-background px-6 py-5">
 
-      <div className="flex items-center gap-3">
+      {/* Left */}
+      <div className="flex items-center gap-4">
 
-        <Layers3 className="h-5 w-5 text-orange-400" />
+        <div className="rounded-xl bg-orange-500/10 p-2">
+          <Layers3 className="h-5 w-5 text-orange-500" />
+        </div>
 
         <div>
           <h2 className="text-xl font-semibold">
@@ -24,24 +27,53 @@ export function AggregationToolbar({
           </h2>
 
           <p className="text-sm text-muted-foreground">
-            event batching & coalescing
+            Batch, deduplicate and optimize high-volume webhook traffic.
           </p>
         </div>
 
       </div>
 
-      <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+      {/* Right */}
+      <div className="flex items-center gap-3">
 
-        <Search className="h-4 w-4 text-muted-foreground" />
+        <div className="relative w-80">
 
-        <input
-          value={query}
-          onChange={(e) =>
-            setQuery(e.target.value)
-          }
-          placeholder="Search rules..."
-          className="bg-transparent outline-none"
-        />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+          <input
+            value={query}
+            onChange={(e) =>
+              setQuery(e.target.value)
+            }
+            placeholder="Search rules, providers..."
+            className="
+              h-10
+              w-full
+              rounded-xl
+              border
+              border-border
+              bg-background
+              pl-10
+              pr-10
+              text-sm
+              outline-none
+              transition
+              focus:border-orange-500
+              focus:ring-2
+              focus:ring-orange-500/20
+            "
+          />
+
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+
+        </div>
 
       </div>
 
