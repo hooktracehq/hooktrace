@@ -47,3 +47,19 @@ export interface AggregationRule {
 export interface AggregationResponse {
   items: AggregationRule[]
 }
+
+
+export interface CreateAggregationRequest {
+  name: string
+  provider?: string | null
+  eventPatterns: string[]
+  config: AggregationConfig
+}
+
+export interface UpdateAggregationRequest {
+  name?: string
+  provider?: string | null
+  enabled?: boolean
+  eventPatterns?: string[]
+  config?: Partial<AggregationConfig>
+}

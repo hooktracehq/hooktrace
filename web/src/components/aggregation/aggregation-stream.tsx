@@ -1,5 +1,7 @@
 "use client"
 
+import { Layers3 } from "lucide-react"
+
 import type { AggregationRule } from "@/types/aggregation"
 
 import { AggregationRow } from "./aggregation-row"
@@ -17,8 +19,19 @@ export function AggregationStream({
 }: Props) {
   if (rules.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        No aggregation rules found.
+      <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+
+        <Layers3 className="mb-4 h-10 w-10 text-muted-foreground/30" />
+
+        <h3 className="font-semibold">
+          No aggregation rules found
+        </h3>
+
+        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+          Create an aggregation rule to batch similar webhook events,
+          reduce duplicate deliveries, and optimize downstream traffic.
+        </p>
+
       </div>
     )
   }
@@ -26,43 +39,57 @@ export function AggregationStream({
   return (
     <div className="h-full overflow-auto">
 
-      {/* Table Header */}
+      {/* Header */}
+
       <div
         className="
           sticky
           top-0
-          z-10
+          z-20
           grid
-          grid-cols-[90px_1.7fr_130px_120px_120px]
+          grid-cols-[100px_1.8fr_140px_130px_140px]
+          items-center
           border-b
           border-border
           bg-background/95
           px-5
           py-4
           text-xs
-          font-medium
+          font-semibold
           uppercase
-          tracking-wide
+          tracking-wider
           text-muted-foreground
           backdrop-blur
         "
       >
         <div>Status</div>
-        <div>Rule</div>
+
+        <div>
+          Rule & Patterns
+          <span className="ml-2 text-[10px] font-normal normal-case">
+            ({rules.length})
+          </span>
+        </div>
+
         <div>Provider</div>
-        <div>Mode</div>
-        <div>Traffic Saved</div>
+
+        <div>Strategy</div>
+
+        <div>Events Saved</div>
       </div>
 
-      {/* Rules */}
-      {rules.map((rule) => (
-        <AggregationRow
-          key={rule.id}
-          rule={rule}
-          selected={selected?.id === rule.id}
-          onClick={() => onSelect(rule)}
-        />
-      ))}
+      {/* Rows */}
+
+      <div className="divide-y divide-border/40">
+        {rules.map((rule) => (
+          <AggregationRow
+            key={rule.id}
+            rule={rule}
+            selected={selected?.id === rule.id}
+            onClick={() => onSelect(rule)}
+          />
+        ))}
+      </div>
 
     </div>
   )

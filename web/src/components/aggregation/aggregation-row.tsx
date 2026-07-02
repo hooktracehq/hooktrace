@@ -22,7 +22,7 @@ export function AggregationRow({
       className={cn(
         `
         grid
-        grid-cols-[90px_1.8fr_130px_120px_120px]
+        grid-cols-[100px_1.8fr_140px_130px_140px]
         items-center
         border-b
         border-border
@@ -33,7 +33,7 @@ export function AggregationRow({
         hover:bg-muted/40
       `,
         selected &&
-          "bg-muted border-l-2 border-l-orange-500"
+          "border-l-2 border-l-orange-500 bg-orange-500/5"
       )}
     >
       {/* Status */}
@@ -45,6 +45,7 @@ export function AggregationRow({
               ? "default"
               : "secondary"
           }
+          className="w-fit"
         >
           {rule.enabled
             ? "Enabled"
@@ -65,27 +66,31 @@ export function AggregationRow({
           {rule.eventPatterns
             .slice(0, 2)
             .map((pattern) => (
-              <span
+              <code
                 key={pattern}
                 className="
                   rounded-md
-                  bg-muted
+                  border
+                  border-border
+                  bg-muted/60
                   px-2
                   py-0.5
+                  font-mono
                   text-[10px]
                   text-muted-foreground
                 "
               >
                 {pattern}
-              </span>
+              </code>
             ))}
 
           {rule.eventPatterns.length >
             2 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground">
               +
-              {rule.eventPatterns.length -
-                2}
+              {rule.eventPatterns.length - 2}
+              {" "}
+              more
             </span>
           )}
 
@@ -97,36 +102,42 @@ export function AggregationRow({
 
       <div>
 
-        <span
-          className="
-            rounded-md
-            border
-            border-border
-            px-2
-            py-1
-            text-xs
-            uppercase
-          "
+        <Badge
+          variant="outline"
+          className="uppercase"
         >
-          {rule.provider ??
-            "ANY"}
-        </span>
+          {rule.provider ?? "ANY"}
+        </Badge>
 
       </div>
 
       {/* Mode */}
 
-      <div className="capitalize">
+      <div>
 
-        {rule.config.mode}
+        <Badge
+          variant="secondary"
+          className="capitalize"
+        >
+          {rule.config.mode.replace(
+            "_",
+            " "
+          )}
+        </Badge>
 
       </div>
 
       {/* Saved */}
 
-      <div className="font-medium">
+      <div>
 
-        {rule.stats.duplicatesSkipped.toLocaleString()}
+        <div className="font-semibold">
+          {rule.stats.duplicatesSkipped.toLocaleString()}
+        </div>
+
+        <div className="text-xs text-muted-foreground">
+          duplicate events
+        </div>
 
       </div>
 

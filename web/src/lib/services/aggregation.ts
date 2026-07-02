@@ -1,19 +1,58 @@
 import { apiFetch } from "@/lib/api"
 
 import type {
-    AggregationRule,
-    AggregationResponse,
-  } from "@/types/aggregation"
+  AggregationRule,
+  AggregationResponse,
+  CreateAggregationRequest,
+  UpdateAggregationRequest,
+} from "@/types/aggregation"
 
-
-export function getAggregationRules() {
+export async function getAggregationRules() {
   return apiFetch<AggregationResponse>(
     "/aggregation"
   )
 }
 
-export function getAggregationRule(id: string) {
+export async function getAggregationRule(
+  id: string
+) {
   return apiFetch<AggregationRule>(
     `/aggregation/${id}`
+  )
+}
+
+export async function createAggregationRule(
+  data: CreateAggregationRequest
+) {
+  return apiFetch<AggregationRule>(
+    "/aggregation",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  )
+}
+
+export async function updateAggregationRule(
+  id: string,
+  data: UpdateAggregationRequest
+) {
+  return apiFetch<AggregationRule>(
+    `/aggregation/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  )
+}
+
+export async function deleteAggregationRule(
+  id: string
+) {
+  return apiFetch(
+    `/aggregation/${id}`,
+    {
+      method: "DELETE",
+    }
   )
 }

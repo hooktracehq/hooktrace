@@ -1,20 +1,32 @@
 "use client"
 
 import {
-  Layers3,
   Activity,
-  Settings2,
   BarChart3,
+  Layers3,
+  Pencil,
+  Settings2,
+  Trash2,
 } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 import type { AggregationRule } from "@/types/aggregation"
 
 type Props = {
   rule: AggregationRule | null
+
+  onEdit?: (rule: AggregationRule) => void
+  onDelete?: (rule: AggregationRule) => void
+  onToggle?: (rule: AggregationRule) => void
 }
 
 export function AggregationInspector({
   rule,
+  onEdit,
+  onDelete,
+  onToggle,
 }: Props) {
   if (!rule) {
     return (
@@ -26,8 +38,7 @@ export function AggregationInspector({
         </h3>
 
         <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-          Select an aggregation rule from the list to inspect its
-          configuration and batching performance.
+          Select an aggregation rule to inspect its configuration and performance.
         </p>
       </div>
     )
@@ -44,7 +55,9 @@ export function AggregationInspector({
 
           <div className="flex items-center gap-3">
 
-            <Layers3 className="h-6 w-6 text-orange-400" />
+            <div className="rounded-lg bg-orange-500/10 p-2">
+              <Layers3 className="h-5 w-5 text-orange-500" />
+            </div>
 
             <div>
 
@@ -52,23 +65,68 @@ export function AggregationInspector({
                 {rule.name}
               </h2>
 
-              <p className="text-sm text-muted-foreground">
-                Aggregation Rule
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+
+                <Badge
+                  variant={
+                    rule.enabled
+                      ? "default"
+                      : "secondary"
+                  }
+                >
+                  {rule.enabled
+                    ? "Enabled"
+                    : "Disabled"}
+                </Badge>
+
+                <Badge
+                  variant="outline"
+                  className="capitalize"
+                >
+                  {rule.config.mode}
+                </Badge>
+
+              </div>
 
             </div>
 
           </div>
 
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              rule.enabled
-                ? "bg-emerald-500/10 text-emerald-500"
-                : "bg-red-500/10 text-red-500"
-            }`}
-          >
-            {rule.enabled ? "Enabled" : "Disabled"}
-          </span>
+          <div className="flex gap-2">
+
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() =>
+                onEdit?.(rule)
+              }
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                onToggle?.(rule)
+              }
+            >
+              {rule.enabled
+                ? "Disable"
+                : "Enable"}
+            </Button>
+
+            <Button
+              size="icon"
+              variant="destructive"
+              onClick={() =>
+                onDelete?.(rule)
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+
+          </div>
 
         </div>
 
@@ -115,11 +173,11 @@ export function AggregationInspector({
           />
         </Section>
 
-        {/* Configuration */}
+        {/* Batch Settings */}
 
         <Section
           icon={<Settings2 className="h-4 w-4" />}
-          title="Configuration"
+          title="Batch Settings"
         >
           <Info
             label="Window"
@@ -131,7 +189,7 @@ export function AggregationInspector({
           />
 
           <Info
-            label="Maximum Batch"
+            label="Batch Size"
             value={
               rule.config.maxBatchSize ??
               "-"
@@ -146,7 +204,14 @@ export function AggregationInspector({
                 : "-"
             }
           />
+        </Section>
 
+        {/* Optimization */}
+
+        <Section
+          icon={<Settings2 className="h-4 w-4" />}
+          title="Optimization"
+        >
           <Info
             label="Rate Limit"
             value={
@@ -165,6 +230,15 @@ export function AggregationInspector({
                 : "Disabled"
             }
           />
+
+          <Info
+            label="Dedup Key"
+            value={
+              rule.config
+                .deduplicationKey ??
+              "-"
+            }
+          />
         </Section>
 
         {/* Performance */}
@@ -173,53 +247,61 @@ export function AggregationInspector({
           icon={<BarChart3 className="h-4 w-4" />}
           title="Performance"
         >
-          <Info
-            label="Events Processed"
-            value={rule.stats.eventsProcessed.toLocaleString()}
-          />
+          <div className="grid grid-cols-2 gap-3">
 
-          <Info
-            label="Batches Created"
-            value={rule.stats.batchesCreated.toLocaleString()}
-          />
+            <MetricCard
+              label="Processed"
+              value={rule.stats.eventsProcessed.toLocaleString()}
+            />
 
-          <Info
-            label="Average Batch"
-            value={rule.stats.averageBatchSize.toFixed(
-              1
-            )}
-          />
+            <MetricCard
+              label="Batches"
+              value={rule.stats.batchesCreated.toLocaleString()}
+            />
 
-          <Info
-            label="Duplicates Skipped"
-            value={rule.stats.duplicatesSkipped.toLocaleString()}
-          />
+            <MetricCard
+              label="Avg Batch"
+              value={rule.stats.averageBatchSize.toFixed(1)}
+            />
+
+            <MetricCard
+              label="Saved"
+              value={rule.stats.duplicatesSkipped.toLocaleString()}
+            />
+
+          </div>
         </Section>
 
         {/* Event Patterns */}
 
-        <div>
-
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Event Patterns
-          </h3>
-
+        <Section
+          icon={<Layers3 className="h-4 w-4" />}
+          title="Event Patterns"
+        >
           <div className="flex flex-wrap gap-2">
 
             {rule.eventPatterns.map(
               (pattern) => (
-                <span
+                <code
                   key={pattern}
-                  className="rounded-lg border border-border bg-muted/40 px-3 py-1 text-xs font-medium"
+                  className="
+                    rounded-md
+                    border
+                    border-border
+                    bg-muted
+                    px-2
+                    py-1
+                    font-mono
+                    text-xs
+                  "
                 >
                   {pattern}
-                </span>
+                </code>
               )
             )}
 
           </div>
-
-        </div>
+        </Section>
 
       </div>
 
@@ -239,7 +321,7 @@ function Section({
   return (
     <div>
 
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2">
 
         {icon}
 
@@ -249,10 +331,8 @@ function Section({
 
       </div>
 
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-
+      <div className="space-y-3 rounded-xl border bg-card p-4">
         {children}
-
       </div>
 
     </div>
@@ -267,13 +347,13 @@ function Info({
   value: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between">
 
       <span className="text-sm text-muted-foreground">
         {label}
       </span>
 
-      <span className="text-sm font-medium text-right">
+      <span className="text-sm font-medium">
         {value}
       </span>
 
@@ -281,9 +361,28 @@ function Info({
   )
 }
 
-function capitalize(value: string) {
+function MetricCard({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
   return (
-    value.charAt(0).toUpperCase() +
-    value.slice(1)
+    <div className="rounded-lg border bg-muted/20 p-4">
+
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+
+      <p className="mt-2 text-2xl font-bold">
+        {value}
+      </p>
+
+    </div>
   )
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
