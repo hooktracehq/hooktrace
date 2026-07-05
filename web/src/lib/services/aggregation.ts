@@ -21,17 +21,39 @@ export async function getAggregationRule(
   )
 }
 
+
+
 export async function createAggregationRule(
   data: CreateAggregationRequest
 ) {
-  return apiFetch<AggregationRule>(
+  console.log("createAggregationRule")
+  console.log("before apiFetch")
+
+  const result = await apiFetch<AggregationRule>(
     "/aggregation",
     {
       method: "POST",
       body: JSON.stringify(data),
     }
   )
+
+  console.log("after apiFetch")
+
+  return result
 }
+// export async function createAggregationRule(
+//   data: CreateAggregationRequest
+// ) {
+//   console.log("5. createAggregationRule")
+
+//   return apiFetch<AggregationRule>(
+//     "/aggregation",
+//     {
+//       method: "POST",
+//       body: JSON.stringify(data),
+//     }
+//   )
+// }
 
 export async function updateAggregationRule(
   id: string,

@@ -44,6 +44,19 @@ export function AggregationInspector({
     )
   }
 
+
+
+  const handleEdit = () => {
+    onEdit?.(rule)
+  }
+  
+  const handleToggle = () => {
+    onToggle?.(rule)
+  }
+  
+  const handleDelete = () => {
+    onDelete?.(rule)
+  }
   return (
     <div className="flex h-full flex-col overflow-auto">
 
@@ -98,7 +111,7 @@ export function AggregationInspector({
               size="icon"
               variant="outline"
               onClick={() =>
-                onEdit?.(rule)
+                handleEdit()
               }
             >
               <Pencil className="h-4 w-4" />
@@ -108,7 +121,7 @@ export function AggregationInspector({
               size="sm"
               variant="outline"
               onClick={() =>
-                onToggle?.(rule)
+                handleToggle()
               }
             >
               {rule.enabled
@@ -120,7 +133,7 @@ export function AggregationInspector({
               size="icon"
               variant="destructive"
               onClick={() =>
-                onDelete?.(rule)
+                handleDelete()
               }
             >
               <Trash2 className="h-4 w-4" />

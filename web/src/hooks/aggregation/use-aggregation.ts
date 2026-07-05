@@ -9,6 +9,18 @@ import {
 export function useAggregation() {
   return useQuery({
     queryKey: ["aggregation"],
-    queryFn: getAggregationRules,
+    queryFn: async () => {
+      const res = await getAggregationRules()
+    
+      console.table(
+        res?.items.map(rule => ({
+          id: rule.id,
+          name: rule.name,
+          enabled: rule.enabled,
+        }))
+      )
+    
+      return res
+    },
   })
 }

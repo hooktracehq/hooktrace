@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useState } from "react"
@@ -12,6 +13,9 @@ import { Layers3 } from "lucide-react"
 
 import { useAggregation } from "@/hooks/aggregation/use-aggregation"
 import { useCreateAggregation } from "@/hooks/aggregation/use-create-aggregation"
+import { useUpdateAggregation } from "@/hooks/aggregation/use-update-aggregation"
+import { useDeleteAggregation } from "@/hooks/aggregation/use-delete-aggregation"
+import type { AggregationRule } from "@/types/aggregation"
 
 import { AggregationToolbar } from "./aggregation-toolbar"
 import { AggregationStats } from "./aggregation-stats"
@@ -21,22 +25,37 @@ import { AggregationInspector } from "./aggregation-inspector"
 import { LoadingScreen } from "@/components/shared/loading-screen"
 
 export function AggregationWorkspace() {
-
-  
   const [query, setQuery] =
     useState("")
-
-  
 
   const {
     data,
     isLoading,
   } = useAggregation()
 
+
+  const deleteAggregation =
+    useDeleteAggregation()
+
   const createAggregation =
     useCreateAggregation()
-  const rules =
-    data?.items ?? []
+
+  const updateAggregation =
+    useUpdateAggregation()
+
+    const rules = useMemo(() => {
+      if (!data) return []
+    
+      return data.items
+    }, [data])
+
+    console.log(
+      "RULES FROM QUERY",
+      rules.map(r => ({
+        id: r.id,
+        enabled: r.enabled,
+      }))
+    )
 
   const filtered = useMemo(() => {
     const search =
@@ -82,6 +101,54 @@ export function AggregationWorkspace() {
     selectedId,
   ])
 
+  const handleCreate = () => {
+    console.log("Create clicked")
+
+    createAggregation.mutate({
+      name: "New Aggregation Rule",
+      provider: null,
+      eventPatterns: [],
+      config: {
+        mode: "batch",
+        timeoutMs: 10000,
+      },
+    })
+  }
+
+  const handleToggle = (
+    rule: AggregationRule
+  ) => {
+    console.log(
+      "Toggle clicked",
+      rule.id,
+      !rule.enabled
+    )
+
+    updateAggregation.mutate({
+      id: rule.id,
+      data: {
+        enabled: !rule.enabled,
+      },
+    })
+  }
+
+  const handleEdit = (
+    rule: AggregationRule
+  ) => {
+    console.log("Edit", rule)
+  }
+
+  const handleDelete = (
+    rule: AggregationRule
+  ) => {
+    console.log(
+      "Delete clicked",
+      rule.id
+    )
+  
+    deleteAggregation.mutate(rule.id)
+  }
+
   if (isLoading) {
     return (
       <LoadingScreen
@@ -97,17 +164,7 @@ export function AggregationWorkspace() {
         query={query}
         setQuery={setQuery}
         totalRules={rules.length}
-        onCreate={() => {
-          createAggregation.mutate({
-            name: "New Aggregation Rule",
-            provider: null,
-            eventPatterns: [],
-            config: {
-              timeoutMs: 10000,
-              mode: "batch",
-            },
-          })
-        }}
+        onCreate={handleCreate}
       />
 
       <AggregationStats
@@ -120,9 +177,7 @@ export function AggregationWorkspace() {
           <div className="max-w-md text-center">
 
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted/40">
-
               <Layers3 className="h-7 w-7 text-orange-500" />
-
             </div>
 
             <h2 className="text-xl font-semibold">
@@ -168,6 +223,9 @@ export function AggregationWorkspace() {
           >
             <AggregationInspector
               rule={selected}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onToggle={handleToggle}
             />
           </Panel>
 

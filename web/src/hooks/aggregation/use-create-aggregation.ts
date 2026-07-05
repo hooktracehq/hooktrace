@@ -9,14 +9,24 @@ export function useCreateAggregation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (
+    mutationFn: async (
       data: CreateAggregationRequest
-    ) => createAggregationRule(data),
+    ) => {
+      console.log("2. mutationFn", data)
+
+      return createAggregationRule(data)
+    },
 
     onSuccess: () => {
+      console.log("3. success")
+
       queryClient.invalidateQueries({
         queryKey: ["aggregation"],
       })
+    },
+
+    onError: (error) => {
+      console.error("4. error", error)
     },
   })
 }

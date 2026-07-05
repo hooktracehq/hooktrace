@@ -53,7 +53,7 @@ export async function apiFetch<T>(
     },
     cache: "no-store",
   })
-
+  console.log("fetch finished")
   const text = await res.text()
 
   if (res.status === 404) return null

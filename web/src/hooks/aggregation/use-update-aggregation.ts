@@ -1,10 +1,15 @@
 "use client"
 
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import {
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query"
 
 import { updateAggregationRule } from "@/lib/services/aggregation"
 
-import type { UpdateAggregationRequest } from "@/types/aggregation"
+import type {
+  UpdateAggregationRequest,
+} from "@/types/aggregation"
 
 type Variables = {
   id: string
@@ -12,19 +17,43 @@ type Variables = {
 }
 
 export function useUpdateAggregation() {
-  const queryClient = useQueryClient()
+  const queryClient =
+    useQueryClient()
 
   return useMutation({
     mutationFn: ({
       id,
       data,
-    }: Variables) =>
-      updateAggregationRule(id, data),
+    }: Variables) => {
+      console.log(
+        "PATCH",
+        id,
+        data
+      )
+
+      return updateAggregationRule(
+        id,
+        data
+      )
+    },
 
     onSuccess: () => {
+      console.log(
+        "PATCH SUCCESS"
+      )
+
       queryClient.invalidateQueries({
-        queryKey: ["aggregation"],
+        queryKey: [
+          "aggregation",
+        ],
       })
+    },
+
+    onError: (error) => {
+      console.error(
+        "PATCH ERROR",
+        error
+      )
     },
   })
 }
