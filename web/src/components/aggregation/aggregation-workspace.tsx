@@ -23,7 +23,7 @@ import { AggregationStream } from "./aggregation-stream"
 import { AggregationInspector } from "./aggregation-inspector"
 
 import { LoadingScreen } from "@/components/shared/loading-screen"
-
+import { EditAggregationDialog } from "./edit-aggregation-dialog"
 export function AggregationWorkspace() {
   const [query, setQuery] =
     useState("")
@@ -32,6 +32,11 @@ export function AggregationWorkspace() {
     data,
     isLoading,
   } = useAggregation()
+
+
+  const [editingRule, setEditingRule] =
+  useState<AggregationRule | null>(null)
+
 
 
   const deleteAggregation =
@@ -135,7 +140,7 @@ export function AggregationWorkspace() {
   const handleEdit = (
     rule: AggregationRule
   ) => {
-    console.log("Edit", rule)
+    setEditingRule(rule)
   }
 
   const handleDelete = (
@@ -166,6 +171,14 @@ export function AggregationWorkspace() {
         totalRules={rules.length}
         onCreate={handleCreate}
       />
+
+{editingRule && (
+  <EditAggregationDialog
+    key={editingRule.id}
+    rule={editingRule}
+    onClose={() => setEditingRule(null)}
+  />
+)}
 
       <AggregationStats
         rules={rules}
