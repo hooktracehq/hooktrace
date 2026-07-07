@@ -10,18 +10,16 @@ export function ConnectionsStats({
   connections,
 }: Props) {
   const healthy =
-    connections.filter(
-      (c) =>
-        c.status ===
-        "healthy"
-    ).length
+  connections.filter(
+    (c) =>
+      c.status === "connected"
+  ).length
 
   const errors =
-    connections.filter(
-      (c) =>
-        c.status ===
-        "error"
-    ).length
+  connections.filter(
+    (c) =>
+      c.status !== "connected"
+  ).length
 
   return (
     <div className="grid grid-cols-4 border-b border-border">

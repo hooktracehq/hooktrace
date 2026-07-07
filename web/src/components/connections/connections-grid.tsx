@@ -28,11 +28,11 @@ export function ConnectionsGrid({
       {connections.map(
         (connection) => (
           <ConnectionCard
-            key={connection.id}
+            key={connection.provider}
             connection={connection}
             selected={
-              selected?.id ===
-              connection.id
+              selected?.provider ===
+              connection.provider
             }
             onClick={() =>
               onSelect(connection)

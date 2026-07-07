@@ -77,30 +77,28 @@ def connect_integration(
         # ---------------------------------
 
         route_id = db.execute(
-            text("""
-                INSERT INTO webhook_routes (
-                    user_id,
-                    token,
-                    route,
-                    provider,
-                    status
-                )
-                VALUES (
-                    :user_id,
-                    :token,
-                    :route,
-                    :provider,
-                    'active'
-                )
-                RETURNING id
-            """),
-            {
-                "user_id": user_id,
-                "token": token,
-                "route": route,
-                "provider": provider,
-            },
-        ).scalar()
+    text("""
+        INSERT INTO webhook_routes (
+            user_id,
+            token,
+            route,
+            provider
+        )
+        VALUES (
+            :user_id,
+            :token,
+            :route,
+            :provider
+        )
+        RETURNING id
+    """),
+    {
+        "user_id": user_id,
+        "token": token,
+        "route": route,
+        "provider": provider,
+    },
+).scalar()
 
         # ---------------------------------
         # CREATE INTEGRATION
