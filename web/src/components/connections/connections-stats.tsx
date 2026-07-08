@@ -1,47 +1,45 @@
 "use client"
 
-import type { Connection } from "@/types/connection"
+import { useConnectionsStats } from "@/hooks/connections/use-connections-stats"
 
-type Props = {
-  connections: Connection[]
-}
+export function ConnectionsStats() {
+  const {
+    data,
+    isLoading,
+  } = useConnectionsStats()
 
-export function ConnectionsStats({
-  connections,
-}: Props) {
-  const healthy =
-  connections.filter(
-    (c) =>
-      c.status === "connected"
-  ).length
-
-  const errors =
-  connections.filter(
-    (c) =>
-      c.status !== "connected"
-  ).length
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-4 border-b border-border">
+        <Stat label="Providers" value="--" />
+        <Stat label="Healthy" value="--" />
+        <Stat label="Errors" value="--" />
+        <Stat label="Events Today" value="--" />
+      </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-4 border-b border-border">
 
       <Stat
         label="Providers"
-        value={connections.length}
+        value={data?.providers ?? 0}
       />
 
       <Stat
         label="Healthy"
-        value={healthy}
+        value={data?.healthy ?? 0}
       />
 
       <Stat
         label="Errors"
-        value={errors}
+        value={data?.errors ?? 0}
       />
 
       <Stat
         label="Events Today"
-        value="128k"
+        value={data?.events_today ?? 0}
       />
 
     </div>

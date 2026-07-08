@@ -289,3 +289,75 @@ def delete_integration(
 
     finally:
         db.close()
+
+
+
+
+@router.get("/stats")
+def get_integration_stats(
+    user_id: str = Depends(
+        get_current_user
+    ),
+):
+    db = SessionLocal()
+
+    try:
+
+        providers = db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM integrations
+                WHERE user_id = :user_id
+            """),
+            {
+                "user_id": user_id,
+            },
+        ).scalar()
+
+        healthy = db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM integrations
+                WHERE user_id = :user_id
+                AND status = 'connected'
+            """),
+            {
+                "user_id": user_id,
+            },
+        ).scalar()
+
+        errors = db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM integrations
+                WHERE user_id = :user_id
+                AND status != 'connected'
+            """),
+            {
+                "user_id": user_id,
+            },
+        ).scalar()
+
+        events_today = db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM webhook_events e
+                JOIN webhook_routes r
+                  ON e.route_id = r.id
+                WHERE r.user_id = :user_id
+                AND DATE(e.created_at) = CURRENT_DATE
+            """),
+            {
+                "user_id": user_id,
+            },
+        ).scalar()
+
+        return {
+            "providers": providers,
+            "healthy": healthy,
+            "errors": errors,
+            "events_today": events_today,
+        }
+
+    finally:
+        db.close()

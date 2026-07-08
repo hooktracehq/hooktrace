@@ -225,6 +225,9 @@ export function ConnectionsWorkspace() {
     return data?.items ?? []
   }, [data])
 
+console.log("data from connections : ",data)
+
+
   const filtered = useMemo(() => {
     return connections.filter(
       (connection) =>

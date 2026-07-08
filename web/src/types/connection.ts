@@ -5,9 +5,10 @@ export interface Connection {
 
   route: string
 
-  webhookUrl: string
+  webhook_url: string
 
-  createdAt: string | null
+  created_at
+  : string | null
 }
 
 export interface ConnectionsResponse {
@@ -28,4 +29,11 @@ export interface DeleteConnectionResponse {
   success: boolean
 
   provider: string
+}
+
+export interface ConnectionsStatsResponse {
+  providers: number
+  healthy: number
+  errors: number
+  events_today: number
 }

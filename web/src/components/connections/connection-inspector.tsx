@@ -195,9 +195,11 @@ export function ConnectionInspector({
 <Info
   label="Created"
   value={
-    connection.createdAt
+    connection.created_at
+
       ? new Date(
-          connection.createdAt
+          connection.created_at
+
         ).toLocaleString()
       : "Unknown"
   }
@@ -212,7 +214,7 @@ export function ConnectionInspector({
         </h3>
 
         <div className="rounded-xl border border-border p-3 text-xs break-all">
-          {connection.webhookUrl}
+          {connection.webhook_url}
         </div>
 
       </div>
