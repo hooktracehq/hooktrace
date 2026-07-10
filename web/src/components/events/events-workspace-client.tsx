@@ -1,7 +1,7 @@
 "use client"
 
-import { useEvents } from "@/hooks/use-events"
-import { useLiveEvents } from "@/hooks/use-live-events"
+import { useEvents } from "@/hooks/events/use-events"
+import { useLiveEvents } from "@/hooks/events/use-live-events"
 
 import { useEventsStore } from "@/app/stores/events-store"
 

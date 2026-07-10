@@ -1,51 +1,54 @@
 "use client"
 
 import { useState } from "react"
-import TargetForm from "./TargetForm"
-import type {
-  DeliveryTarget,
-  DeliveryTargetPayload,
-} from "@/types/delivery-target"
+
 import { motion, AnimatePresence } from "framer-motion"
+import { Plus } from "lucide-react"
+import TargetForm from "./TargetForm"
+
+import type {
+  Destination,
+  DeliveryTargetPayload,
+} from "@/types/destinations"
+
+import { useCreateDestination } from "@/hooks/destinations/use-create-destination"
 
 type Props = {
-  onCreated: (target: DeliveryTarget) => void
+  onCreated: (
+    target: Destination
+  ) => void
 }
 
-export default function CreateTargetModal({ onCreated }: Props) {
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+export default function CreateTargetModal({
+  onCreated,
+}: Props) {
+  const [open, setOpen] =
+    useState(false)
 
-  async function handleCreate(data: DeliveryTargetPayload) {
-    setLoading(true)
+  const createTarget =
+    useCreateDestination()
 
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/delivery-targets`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        }
-      )
+  async function handleCreate(
+    data: DeliveryTargetPayload
+  ) {
+    const result =
+      await createTarget.mutateAsync(data)
 
-      const result: DeliveryTarget = await res.json()
+    onCreated(result)
 
-      onCreated(result)
-      setOpen(false)
-    } finally {
-      setLoading(false)
-    }
+    setOpen(false)
   }
 
   if (!open) {
     return (
+      
+
       <motion.button
-        whileTap={{ scale: 0.95 }}
+        whileTap={{ scale: 0.96 }}
         onClick={() => setOpen(true)}
-        className="btn-primary"
+        className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
       >
+        <Plus className="h-4 w-4" />
         New Target
       </motion.button>
     )
@@ -54,40 +57,45 @@ export default function CreateTargetModal({ onCreated }: Props) {
   return (
     <AnimatePresence>
       <motion.div
-        key="overlay"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       >
-
         <motion.div
-          key="modal"
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          transition={{ duration: 0.2 }}
-          className="bg-card rounded-2xl p-6 w-full max-w-md shadow-xl"
+          initial={{
+            opacity: 0,
+            scale: 0.95,
+            y: 10,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            y: 0,
+          }}
+          exit={{
+            opacity: 0,
+            scale: 0.95,
+            y: 10,
+          }}
+          className="bg-card w-full max-w-md rounded-2xl p-6 shadow-xl"
         >
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold">
+              Create Target
+            </h2>
 
-          {/* Header */}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="font-semibold">Create Target</h2>
-
-            <motion.button
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={() => setOpen(false)}
-              className="text-sm text-muted-foreground hover:text-foreground transition"
             >
               ✕
-            </motion.button>
+            </button>
           </div>
 
-          {/* Form */}
-          <div className="space-y-4">
-            <TargetForm onSubmit={handleCreate} loading={loading} />
-          </div>
-
+          <TargetForm
+            onSubmit={handleCreate}
+            loading={createTarget.isPending}
+          />
         </motion.div>
       </motion.div>
     </AnimatePresence>

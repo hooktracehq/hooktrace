@@ -1,45 +1,50 @@
 "use client"
 
-import { Destination } from "@/types/destinations"
+import { useDestinationStats } from "@/hooks/destinations/use-destination-stats"
 
-type Props = {
-  destinations: Destination[]
-}
-
-export function DestinationsStats({
-  destinations,
-}: Props) {
-  const active =
-    destinations.filter(
-      (d) => d.status === "healthy"
-    ).length
-
-  const failed =
-    destinations.filter(
-      (d) => d.status === "failed"
-    ).length
+export function DestinationsStats() {
+  const {
+    data,
+    isLoading,
+  } = useDestinationStats()
 
   return (
     <div className="grid grid-cols-4 border-b border-border">
 
       <Stat
-        label="Destinations"
-        value={destinations.length}
+        label="Targets"
+        value={
+          isLoading
+            ? "..."
+            : data?.targets ?? 0
+        }
       />
 
       <Stat
         label="Healthy"
-        value={active}
+        value={
+          isLoading
+            ? "..."
+            : data?.healthy ?? 0
+        }
       />
 
       <Stat
         label="Failed"
-        value={failed}
+        value={
+          isLoading
+            ? "..."
+            : data?.failed ?? 0
+        }
       />
 
       <Stat
-        label="Avg Latency"
-        value="82ms"
+        label="Successful"
+        value={
+          isLoading
+            ? "..."
+            : data?.deliveries ?? 0
+        }
       />
 
     </div>

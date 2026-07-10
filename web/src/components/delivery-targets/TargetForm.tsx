@@ -2,14 +2,17 @@
 
 import { useState } from "react"
 import type {
-  DeliveryTarget,
+  Destination,
   DeliveryTargetPayload,
   TargetConfig,
-} from "@/types/delivery-target"
+} from "@/types/destinations"
+
 
 type Props = {
-  initial?: DeliveryTarget
-  onSubmit: (data: DeliveryTargetPayload) => Promise<void>
+  initial?: Destination
+  onSubmit: (
+    data: DeliveryTargetPayload
+  ) => Promise<void>
   loading: boolean
 }
 
@@ -139,11 +142,13 @@ export default function TargetForm({ initial, onSubmit, loading }: Props) {
 
   async function handleSubmit() {
     setError(null)
-
-    if (!name) return setError("Target name is required")
-
+  
+    if (!name.trim()) {
+      return setError("Target name is required")
+    }
+  
     const finalConfig = { ...config }
-
+  
     if (typeof finalConfig.headers === "string") {
       try {
         finalConfig.headers = JSON.parse(finalConfig.headers)
@@ -151,7 +156,28 @@ export default function TargetForm({ initial, onSubmit, loading }: Props) {
         return setError("Invalid headers JSON")
       }
     }
-
+  
+    if (type === "http") {
+      if (!finalConfig.url?.trim()) {
+        return setError("URL is required")
+      }
+  
+      try {
+        new URL(finalConfig.url)
+      } catch {
+        return setError("Please enter a valid URL")
+      }
+  
+      if (
+        finalConfig.url.includes("localhost") ||
+        finalConfig.url.includes("127.0.0.1")
+      ) {
+        return setError(
+          "This URL points to localhost. If HookTrace is running inside Docker, use 'host.docker.internal' instead of 'localhost'."
+        )
+      }
+    }
+  
     await onSubmit({
       name,
       type,

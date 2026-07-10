@@ -168,6 +168,55 @@ def list_delivery_targets(user_id: str = Depends(get_current_user)):
     finally:
         db.close()
 
+@router.get("/stats")
+def get_delivery_target_stats(
+    user_id: str = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        row = db.execute(
+            text("""
+                SELECT
+                    COUNT(*) AS destinations,
+
+                    COUNT(*) FILTER (
+                        WHERE enabled = TRUE
+                    ) AS healthy,
+
+                    COUNT(*) FILTER (
+                        WHERE enabled = FALSE
+                    ) AS paused,
+
+                    COALESCE(
+                        SUM(success_count),
+                        0
+                    ) AS delivered,
+
+                    COALESCE(
+                        SUM(error_count),
+                        0
+                    ) AS failed
+                FROM delivery_targets
+                WHERE user_id = :user_id
+            """),
+            {
+                "user_id": user_id,
+            },
+        ).mappings().first()
+
+        return {
+           "targets": row["destinations"],
+           "healthy": row["healthy"],
+           "failed": row["failed"],
+           "deliveries": row["delivered"],
+
+        }
+
+    finally:
+        db.close()
+
+
 
 @router.post("")
 def create_delivery_target(request: CreateDeliveryTargetRequest, user_id: str = Depends(get_current_user)):
@@ -324,7 +373,7 @@ def delete_delivery_target(target_id: str, user_id: str = Depends(get_current_us
 
 
 @router.post("/{target_id}/test")
-def test_delivery_target(target_id: str, user_id: str = Depends(get_current_user)):
+async def test_delivery_target(target_id: str, user_id: str = Depends(get_current_user)):
     db = SessionLocal()
     try:
         target = db.execute(
@@ -343,7 +392,7 @@ def test_delivery_target(target_id: str, user_id: str = Depends(get_current_user
             raise HTTPException(status_code=400, detail="Target is disabled")
 
         test_payload = {
-            "id": "test_" + str(uuid.uuid4()),
+            "event_id": None,
             "event": "test.webhook",
             "provider": "hooktrace",
             "timestamp": datetime.utcnow().isoformat(),
@@ -353,7 +402,7 @@ def test_delivery_target(target_id: str, user_id: str = Depends(get_current_user
             }
         }
 
-        result = route_webhook_to_targets(
+        result = await route_webhook_to_targets(
     user_id=user_id,
     webhook_data=test_payload,
     provider=None,
@@ -453,4 +502,6 @@ def get_target_stats(target_id: str, user_id: str = Depends(get_current_user)):
         }
     finally:
         db.close()
+
+
 

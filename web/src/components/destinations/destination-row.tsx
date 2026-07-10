@@ -20,10 +20,12 @@ export function DestinationRow({
       className={cn(
         `
           grid
-          grid-cols-[1.5fr_140px_140px_140px_140px]
+          grid-cols-[1.5fr_120px_120px_120px_180px]
           items-center
-          border-b border-border
-          px-5 py-4
+          border-b
+          border-border
+          px-5
+          py-4
           text-left
           hover:bg-white/[0.03]
         `,
@@ -31,7 +33,6 @@ export function DestinationRow({
           "bg-white/[0.04]"
       )}
     >
-
       <div className="font-medium">
         {destination.name}
       </div>
@@ -40,32 +41,32 @@ export function DestinationRow({
         <span
           className={cn(
             "rounded-full px-2 py-1 text-xs",
-
-            destination.status ===
-              "healthy" &&
-              "bg-emerald-500/10 text-emerald-400",
-
-            destination.status ===
-              "failed" &&
-              "bg-rose-500/10 text-rose-400"
+            destination.enabled
+              ? "bg-emerald-500/10 text-emerald-400"
+              : "bg-yellow-500/10 text-yellow-400"
           )}
         >
-          {destination.status}
+          {destination.enabled
+            ? "Healthy"
+            : "Paused"}
         </span>
       </div>
 
       <div>
-        {destination.delivered}
+        {destination.successCount}
       </div>
 
       <div>
-        {destination.latency}
+        {destination.errorCount}
       </div>
 
-      <div>
-        {destination.lastSeen}
+      <div className="text-xs text-muted-foreground">
+        {destination.lastUsed
+          ? new Date(
+              destination.lastUsed
+            ).toLocaleString()
+          : "Never"}
       </div>
-
     </button>
   )
 }

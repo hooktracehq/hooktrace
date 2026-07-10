@@ -5,7 +5,7 @@ import { ReplayButton } from "@/components/events/replay-button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { motion, AnimatePresence } from "framer-motion"
 import { AlertTriangle } from "lucide-react"
-import { useEvents } from "@/hooks/use-events"
+import { useEvents } from "@/hooks/events/use-events"
 
 type WebhookEvent = {
   id: number

@@ -289,9 +289,7 @@ console.log("data from connections : ",data)
         setQuery={setQuery}
       />
 
-      <ConnectionsStats
-        connections={filtered}
-      />
+<ConnectionsStats />
 
       <PanelGroup direction="horizontal">
 
