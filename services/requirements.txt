@@ -15,9 +15,11 @@ alembic
 itsdangerous
 supabase
 pynacl
+
 kafka-python
 requests
 boto3
 pika
+
 grpcio
-redis
+protobuf

@@ -35,6 +35,7 @@ class DeliveryTargetConfig(BaseModel):
     # SQS
     queueUrl: Optional[str] = None
     region: Optional[str] = None
+    endpointUrl: Optional[str] = None
     accessKeyId: Optional[str] = None
     secretAccessKey: Optional[str] = None
     messageGroupId: Optional[str] = None

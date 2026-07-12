@@ -4,9 +4,10 @@ import { useState } from "react"
 import type {
   Destination,
   DeliveryTargetPayload,
-  TargetConfig,
+  // TargetConfig,
 } from "@/types/destinations"
 
+import {TargetConfig} from "@/types/delivery-target"
 
 type Props = {
   initial?: Destination
@@ -95,13 +96,56 @@ export default function TargetForm({ initial, onSubmit, loading }: Props) {
           </>
         )
 
-      case "sqs":
-        return (
-          <>
-            <input placeholder="Queue URL" value={config.queueUrl || ""} onChange={(e) => updateConfig("queueUrl", e.target.value)} className="input" />
-            <input placeholder="Region" value={config.region || ""} onChange={(e) => updateConfig("region", e.target.value)} className="input" />
-          </>
-        )
+        case "sqs":
+          return (
+            <>
+              <input
+                placeholder="Queue URL"
+                value={config.queueUrl || ""}
+                onChange={(e) =>
+                  updateConfig("queueUrl", e.target.value)
+                }
+                className="input"
+              />
+        
+              <input
+                placeholder="Region"
+                value={config.region || ""}
+                onChange={(e) =>
+                  updateConfig("region", e.target.value)
+                }
+                className="input"
+              />
+        
+              <input
+                placeholder="Endpoint URL (optional)"
+                value={config.endpointUrl || ""}
+                onChange={(e) =>
+                  updateConfig("endpointUrl", e.target.value)
+                }
+                className="input"
+              />
+        
+              <input
+                placeholder="Access Key ID (optional)"
+                value={config.accessKeyId || ""}
+                onChange={(e) =>
+                  updateConfig("accessKeyId", e.target.value)
+                }
+                className="input"
+              />
+        
+              <input
+                type="password"
+                placeholder="Secret Access Key (optional)"
+                value={config.secretAccessKey || ""}
+                onChange={(e) =>
+                  updateConfig("secretAccessKey", e.target.value)
+                }
+                className="input"
+              />
+            </>
+          )
 
       case "rabbitmq":
         return (

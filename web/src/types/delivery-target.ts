@@ -95,8 +95,15 @@ export type RedisConfig = {
 export type SqsConfig = {
   queueUrl?: string
   region?: string
-  accessKeyId?: string 
-  secretAccessKey?: string 
+
+  // LocalStack / custom endpoint
+  endpointUrl?: string
+
+  // AWS credentials (optional)
+  accessKeyId?: string
+  secretAccessKey?: string
+
+  // FIFO queues only
   messageGroupId?: string
 }
 

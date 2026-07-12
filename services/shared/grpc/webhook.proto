@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package hooktrace;
+
+service WebhookService {
+  rpc SendWebhook (WebhookRequest) returns (WebhookResponse);
+}
+
+message WebhookRequest {
+  string event = 1;
+  string provider = 2;
+  string timestamp = 3;
+  string payload = 4;
+}
+
+message WebhookResponse {
+  bool success = 1;
+  string message = 2;
+}
