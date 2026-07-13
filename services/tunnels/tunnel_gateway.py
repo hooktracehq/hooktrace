@@ -1,9 +1,10 @@
 import json
+
 from fastapi import APIRouter
 from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
 
-from .tunnel_registry import registry
+from services.api.ws import manager
 
 
 router = APIRouter(tags=["tunnel-gateway"])
@@ -14,17 +15,18 @@ async def tunnel_gateway(
     websocket: WebSocket,
     token: str,
 ):
-    await websocket.accept()
-
-    await registry.register(
-        token,
+    await manager.connect(
         websocket,
+        token,
+        "token",
     )
 
     print(f"[gateway] tunnel connected: {token}")
 
     try:
+
         while True:
+
             raw = await websocket.receive_text()
 
             data = json.loads(raw)
@@ -32,15 +34,24 @@ async def tunnel_gateway(
             message_type = data.get("type")
 
             if message_type == "heartbeat":
-                registry.heartbeat(token)
                 continue
 
             if message_type == "response":
-                # handled by proxy correlation layer later
-                continue
+
+                await manager.handle_tunnel_response(
+                    data
+                )
 
     except WebSocketDisconnect:
-        print(f"[gateway] disconnected: {token}")
+
+        print(
+            f"[gateway] tunnel disconnected: {token}"
+        )
 
     finally:
-        registry.unregister(token)
+
+        manager.disconnect(
+            websocket,
+            token,
+            "token",
+        )

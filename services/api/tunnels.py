@@ -65,9 +65,9 @@ def list_tunnels(user_id: str = Depends(get_current_user)):
                     "publicUrl": row[3],
                     "token": row[4],
                     "status": row[5],
-                    "createdAt": row[5].isoformat() if row[5] else None,
-                    "lastUsed": row[6].isoformat() if row[6] else None,
-                    "requestCount": row[7],
+                    "createdAt": row[6].isoformat() if row[6] else None,
+                    "lastUsed": row[7].isoformat() if row[7] else None,
+                    "requestCount": row[8],
                 }
                 for row in tunnels
             ]
@@ -153,9 +153,9 @@ def get_tunnel(
             "publicUrl": tunnel[3],
             "token": tunnel[4],
             "status": tunnel[5],
-            "createdAt": tunnel[5].isoformat() if tunnel[5] else None,
-            "lastUsed": tunnel[6].isoformat() if tunnel[6] else None,
-            "requestCount": tunnel[7],
+            "createdAt": tunnel[6].isoformat() if tunnel[6] else None,
+            "lastUsed": tunnel[7].isoformat() if tunnel[7] else None,
+            "requestCount": tunnel[8],
         }
     finally:
         db.close()

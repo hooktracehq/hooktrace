@@ -1,19 +1,19 @@
-import uuid
-import json
 import asyncio
+import json
+import uuid
 
 from fastapi import APIRouter
-from fastapi import Request
 from fastapi import HTTPException
+from fastapi import Request
 from fastapi.responses import Response
 
-from .tunnel_registry import registry
+from services.api.ws import manager
 
 
 router = APIRouter(tags=["tunnel-proxy"])
 
 
-PENDING_RESPONSES = {}
+from services.tunnels.pending_requests import PENDING_RESPONSES
 
 
 @router.api_route(
@@ -32,35 +32,21 @@ async def proxy_request(
     token: str,
     path: str,
 ):
+    connections = manager.token_connections.get(token)
 
-    if not registry.exists(token):
-
+    if not connections:
         raise HTTPException(
             status_code=404,
             detail="Tunnel offline",
         )
 
-    if not registry.is_alive(token):
-
-        raise HTTPException(
-            status_code=503,
-            detail="Tunnel heartbeat timeout",
-        )
-
-    websocket = registry.get_socket(token)
-
-    if not websocket:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Tunnel socket missing",
-        )
+    websocket = connections[0]
 
     body = await request.body()
 
     request_id = str(uuid.uuid4())
 
-    future = asyncio.Future()
+    future = asyncio.get_running_loop().create_future()
 
     PENDING_RESPONSES[request_id] = future
 
@@ -74,11 +60,10 @@ async def proxy_request(
         "body": body.decode(errors="ignore"),
     }
 
-    await websocket.send_text(
-        json.dumps(payload)
-    )
-
     try:
+        await websocket.send_text(
+            json.dumps(payload)
+        )
 
         result = await asyncio.wait_for(
             future,
@@ -95,6 +80,18 @@ async def proxy_request(
         raise HTTPException(
             status_code=504,
             detail="Tunnel response timeout",
+        )
+
+    except Exception as e:
+
+        PENDING_RESPONSES.pop(
+            request_id,
+            None,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
         )
 
     return Response(

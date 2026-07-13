@@ -200,7 +200,7 @@
 from fastapi import WebSocket
 from typing import Dict, List
 
-from ..tunnels.tunnel_proxy import PENDING_RESPONSES
+from services.tunnels.pending_requests import PENDING_RESPONSES
 
 
 class ConnectionManager:
