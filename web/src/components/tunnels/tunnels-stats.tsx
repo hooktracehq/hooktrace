@@ -2,9 +2,9 @@
 
 import {
   Activity,
+  Cable,
   Clock3,
-  Globe,
-  TrendingUp,
+  TriangleAlert,
 } from "lucide-react"
 
 import type { Tunnel } from "@/types/tunnel"
@@ -16,50 +16,96 @@ type Props = {
 export function TunnelsStats({
   tunnels,
 }: Props) {
+
   const active =
     tunnels.filter(
-      (t) => t.status === "active"
+      (t) => t.status === "active",
     ).length
 
-  const requests =
+  const totalRequests =
     tunnels.reduce(
-      (acc, t) =>
-        acc + t.requestCount,
-      0
+      (sum, tunnel) =>
+        sum + tunnel.requestCount,
+      0,
     )
+
+  const paused =
+    tunnels.filter(
+      (t) => t.status === "paused",
+    ).length
+
+  const lastUsed =
+    tunnels
+      .map((t) => t.lastUsed)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0] ?? "Never"
 
   const stats = [
     {
-      label: "Active Tunnels",
+      label: "Active",
       value: active,
-      icon: Globe,
+      icon: Cable,
+      color: "text-emerald-400",
     },
     {
       label: "Requests",
-      value: requests,
+      value: totalRequests.toLocaleString(),
       icon: Activity,
+      color: "text-orange-400",
     },
     {
-      label: "Avg Latency",
-      value: "84ms",
-      icon: TrendingUp,
+      label: "Paused",
+      value: paused,
+      icon: TriangleAlert,
+      color: "text-yellow-400",
     },
     {
-      label: "Uptime",
-      value: "99.9%",
+      label: "Last Activity",
+      value:
+        lastUsed === "Never"
+          ? "Never"
+          : new Date(lastUsed).toLocaleDateString(),
       icon: Clock3,
+      color: "text-blue-400",
     },
   ]
 
   return (
-    <div className="grid grid-cols-4 border-b border-border">
-
+    <div
+      className="
+        grid
+        grid-cols-2
+        border-b
+        border-border
+        lg:grid-cols-4
+      "
+    >
       {stats.map((item) => (
         <div
           key={item.label}
-          className="border-r border-border p-5 last:border-r-0"
+          className="
+            border-r
+            border-border
+            p-6
+            last:border-r-0
+          "
         >
-          <item.icon className="mb-3 h-5 w-5 text-orange-400" />
+          <div
+            className={`
+              mb-4
+              flex
+              h-10
+              w-10
+              items-center
+              justify-center
+              rounded-lg
+              bg-muted
+              ${item.color}
+            `}
+          >
+            <item.icon className="h-5 w-5" />
+          </div>
 
           <div className="text-3xl font-bold">
             {item.value}
@@ -70,7 +116,6 @@ export function TunnelsStats({
           </div>
         </div>
       ))}
-
     </div>
   )
 }

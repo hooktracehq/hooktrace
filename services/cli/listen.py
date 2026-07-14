@@ -217,7 +217,12 @@ import os
 PORT = sys.argv[1]
 TOKEN = sys.argv[2]
 
-WS_URL = f"ws://localhost:8000/ws/tunnel/{TOKEN}"
+API_URL = os.getenv(
+    "HOOKTRACE_API_URL",
+    "ws://localhost:3001",
+)
+
+WS_URL = f"{API_URL}/ws/tunnel/{TOKEN}"
 LOCAL_URL = f"http://localhost:{PORT}"
 
 # ---------------- STATE ----------------

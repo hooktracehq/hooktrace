@@ -2,85 +2,113 @@
 
 import { useState } from "react"
 
+import { CreateTunnelModal } from "./create-tunnel-modal"
 import { TunnelCard } from "./tunnel-card"
+import { TunnelEmpty } from "./tunnel-empty"
 import { TunnelsStats } from "./tunnels-stats"
 import { TunnelsToolbar } from "./tunnels-toolbar"
-import { CreateTunnelModal } from "./create-tunnel-modal"
 
-import type { Tunnel } from "@/types/tunnel"
-
-const MOCK_TUNNELS: Tunnel[] = [
-  {
-    id: "1",
-    name: "Local API",
-    publicUrl:
-      "https://hooktrace.dev/t/abc123",
-
-    targetUrl:
-      "http://localhost:3000",
-
-    status: "active",
-
-    requestCount: 1284,
-
-    bytesTransferred: 1024,
-
-    avgResponseTime: 100,
-
-    createdAt:
-      "2026-01-01",
-
-    lastSeen:
-      "2s ago",
-  },
-]
+import { useTunnels } from "@/hooks/tunnels/use-tunnels"
+import { useTunnelRealtime } from "@/hooks/tunnels/use-tunnel-realtime"
 
 export function TunnelsWorkspace() {
   const [showModal, setShowModal] =
     useState(false)
 
+  const {
+    data: tunnels = [],
+    isLoading,
+  } = useTunnels()
+
+  useTunnelRealtime()
+
   return (
     <div
       className="
-        flex h-[calc(100vh-92px)]
-        flex-col overflow-hidden
-        rounded-2xl border border-border
+        flex
+        h-[calc(100vh-92px)]
+        flex-col
+        overflow-hidden
+        rounded-2xl
+        border
+        border-border
         bg-surface-1
       "
     >
-
       <TunnelsToolbar
+        total={tunnels.length}
         onCreate={() =>
           setShowModal(true)
         }
       />
 
       <TunnelsStats
-        tunnels={MOCK_TUNNELS}
+        tunnels={tunnels}
       />
 
-      <div className="grid gap-5 p-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="flex-1 overflow-auto p-6">
 
-        {MOCK_TUNNELS.map(
-          (tunnel) => (
-            <TunnelCard
-              key={tunnel.id}
-              tunnel={tunnel}
+        {isLoading ? (
+
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+
+            {Array.from({
+              length: 6,
+            }).map((_, index) => (
+              <div
+                key={index}
+                className="
+                  h-72
+                  animate-pulse
+                  rounded-2xl
+                  border
+                  border-border
+                  bg-muted/40
+                "
+              />
+            ))}
+
+          </div>
+
+        ) : tunnels.length === 0 ? (
+
+          <div className="flex h-full items-center justify-center">
+
+            <TunnelEmpty
+              onCreate={() =>
+                setShowModal(true)
+              }
             />
-          )
+
+          </div>
+
+        ) : (
+
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+
+            {tunnels.map((tunnel) => (
+
+              <TunnelCard
+                key={tunnel.id}
+                tunnel={tunnel}
+              />
+
+            ))}
+
+          </div>
+
         )}
 
       </div>
 
       {showModal && (
+
         <CreateTunnelModal
           onClose={() =>
             setShowModal(false)
           }
-          onCreate={() =>
-            setShowModal(false)
-          }
         />
+
       )}
 
     </div>
