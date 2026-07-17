@@ -30,6 +30,8 @@ from .integrations import router as integrations_router
 # REST API
 from .tunnels import router as tunnels_router
 
+
+
 # Dev Mode Gateway
 from services.tunnels.tunnel_gateway import (
     router as tunnel_gateway_router,
@@ -44,7 +46,7 @@ from services.tunnels.tunnel_proxy import (
 from .ws import manager
 from .subscriber import (
     start_redis_subscriber,
-    start_tunnel_subscriber,
+
 )
 
 
@@ -63,11 +65,7 @@ Thread(
     daemon=True,
 ).start()
 
-Thread(
-    target=start_tunnel_subscriber,
-    args=(manager,),
-    daemon=True,
-).start()
+
 
 # -----------------------------
 # CORS
@@ -118,6 +116,8 @@ app.include_router(
 app.include_router(
     tunnel_proxy_router
 )
+
+
 
 
 # -----------------------------
@@ -196,19 +196,3 @@ def metrics_endpoint():
 # Dev tunnels
 # -----------------------------
 
-tunnels = {}
-
-@app.websocket("/ws/tunnel/{token}")
-async def websocket_tunnel(websocket: WebSocket, token: str):
-    await websocket.accept()
-
-    tunnels[token] = websocket
-
-    print(f"[tunnel] connected: {token}")
-
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        print(f"[tunnel] disconnected: {token}")
-        tunnels.pop(token, None)

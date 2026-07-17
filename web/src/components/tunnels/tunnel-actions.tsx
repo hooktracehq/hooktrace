@@ -3,6 +3,7 @@
 import { useState } from "react"
 
 import {
+  Edit3,
   Loader2,
   Pause,
   Play,
@@ -10,6 +11,8 @@ import {
 } from "lucide-react"
 
 import { useRouter } from "next/navigation"
+
+import { EditTunnelModal } from "@/components/tunnels/edit-tunnel-modal"
 
 import { useDeleteTunnel } from "@/hooks/tunnels/use-delete-tunnel"
 import { useUpdateTunnel } from "@/hooks/tunnels/use-update-tunnel"
@@ -25,7 +28,7 @@ export function TunnelActions({
 }: Props) {
   const router = useRouter()
 
-  const [loading, setLoading] =
+  const [showEdit, setShowEdit] =
     useState(false)
 
   const updateTunnel =
@@ -36,8 +39,6 @@ export function TunnelActions({
 
   async function handleToggle() {
     try {
-      setLoading(true)
-
       await updateTunnel.mutateAsync({
         id: tunnel.id,
         payload: {
@@ -53,8 +54,6 @@ export function TunnelActions({
       alert(
         "Unable to update tunnel.",
       )
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -67,8 +66,6 @@ export function TunnelActions({
     if (!confirmed) return
 
     try {
-      setLoading(true)
-
       await deleteTunnel.mutateAsync(
         tunnel.id,
       )
@@ -80,77 +77,114 @@ export function TunnelActions({
       alert(
         "Unable to delete tunnel.",
       )
-    } finally {
-      setLoading(false)
     }
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <>
+      <div className="flex items-center gap-3">
 
-      <button
-        onClick={handleToggle}
-        disabled={loading}
-        className="
-          flex
-          items-center
-          gap-2
-          rounded-xl
-          border
-          border-border
-          bg-background
-          px-4
-          py-2
-          text-sm
-          transition-colors
-          hover:bg-accent
-          disabled:opacity-50
-        "
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : tunnel.status ===
-          "paused" ? (
-          <Play className="h-4 w-4 text-emerald-400" />
-        ) : (
-          <Pause className="h-4 w-4 text-yellow-400" />
-        )}
+        <button
+          onClick={() =>
+            setShowEdit(true)
+          }
+          className="
+            flex
+            items-center
+            gap-2
+            rounded-xl
+            border
+            border-border
+            bg-background
+            px-4
+            py-2
+            text-sm
+            transition-colors
+            hover:bg-accent
+          "
+        >
+          <Edit3 className="h-4 w-4" />
 
-        {tunnel.status ===
-        "paused"
-          ? "Resume"
-          : "Pause"}
-      </button>
+          Edit
+        </button>
 
-      <button
-        onClick={handleDelete}
-        disabled={loading}
-        className="
-          flex
-          items-center
-          gap-2
-          rounded-xl
-          border
-          border-red-500/20
-          bg-red-500/10
-          px-4
-          py-2
-          text-sm
-          text-red-400
-          transition-colors
-          hover:bg-red-500/20
-          disabled:opacity-50
-        "
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Trash2 className="h-4 w-4" />
-        )}
+        <button
+          onClick={handleToggle}
+          disabled={
+            updateTunnel.isPending
+          }
+          className="
+            flex
+            items-center
+            gap-2
+            rounded-xl
+            border
+            border-border
+            bg-background
+            px-4
+            py-2
+            text-sm
+            transition-colors
+            hover:bg-accent
+            disabled:opacity-50
+          "
+        >
+          {updateTunnel.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : tunnel.status ===
+            "paused" ? (
+            <Play className="h-4 w-4 text-emerald-400" />
+          ) : (
+            <Pause className="h-4 w-4 text-yellow-400" />
+          )}
 
-        Delete
-      </button>
+          {tunnel.status ===
+          "paused"
+            ? "Resume"
+            : "Pause"}
+        </button>
 
-    </div>
+        <button
+          onClick={handleDelete}
+          disabled={
+            deleteTunnel.isPending
+          }
+          className="
+            flex
+            items-center
+            gap-2
+            rounded-xl
+            border
+            border-red-500/20
+            bg-red-500/10
+            px-4
+            py-2
+            text-sm
+            text-red-400
+            transition-colors
+            hover:bg-red-500/20
+            disabled:opacity-50
+          "
+        >
+          {deleteTunnel.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+
+          Delete
+        </button>
+
+      </div>
+
+      {showEdit && (
+        <EditTunnelModal
+          tunnel={tunnel}
+          onClose={() =>
+            setShowEdit(false)
+          }
+        />
+      )}
+    </>
   )
 }

@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Optional
 import uuid
 import secrets
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -18,6 +19,52 @@ from .auth import get_current_user
 
 
 router = APIRouter(prefix="/tunnels", tags=["tunnels"])
+
+
+# ----------------------------------------------------
+# Tunnel Configuration
+# ----------------------------------------------------
+
+HOOKTRACE_DOMAIN = os.getenv(
+    "HOOKTRACE_DOMAIN",
+    "hooktrace.xyz",
+)
+
+HOOKTRACE_API = os.getenv(
+    "HOOKTRACE_API",
+    "http://localhost:3001",
+)
+
+LOCAL_DEV = (
+    os.getenv(
+        "LOCAL_DEV",
+        "true",
+    ).lower()
+    == "true"
+)
+
+
+def build_public_url(
+    token: str,
+) -> str:
+    """
+    Generates the public tunnel URL.
+
+    Local:
+        http://localhost:3001/tunnel/<token>
+
+    Production:
+        https://hook-<token>.hooktrace.xyz
+    """
+
+    if LOCAL_DEV:
+        return (
+            f"{HOOKTRACE_API}/tunnel/{token}"
+        )
+
+    return (
+        f"https://hook-{token}.{HOOKTRACE_DOMAIN}"
+    )
 
 
 # -----------------------------
@@ -83,11 +130,15 @@ def create_tunnel(
 ):
     """Create a new dev tunnel"""
     db = SessionLocal()
+
+    
     try:
         tunnel_id = str(uuid.uuid4())
-
         token = secrets.token_urlsafe(16)
-        public_url = f"https://hook-{token}.hooktrace.dev"
+
+        public_url = build_public_url(
+    token,
+)
 
         db.execute(
             text("""

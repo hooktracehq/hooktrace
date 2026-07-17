@@ -51,35 +51,9 @@ def start_redis_subscriber(manager):
 # Tunnel subscriber
 # ---------------------------------------
 
-async def _tunnel_loop(manager):
-
-    pubsub = redis_client.pubsub()
-    pubsub.psubscribe("tunnel:*")
-
-    print("[subscriber] Listening on tunnel:*")
-
-    for message in pubsub.listen():
-
-        if message["type"] != "pmessage":
-            continue
-
-        channel = message["channel"]
-
-        if isinstance(channel, bytes):
-            channel = channel.decode()
-
-        token = channel.split(":")[1]
-
-        data = json.loads(message["data"])
-
-        await manager.send(
-            token,
-            data,
-            "token",
-        )
 
 
-def start_tunnel_subscriber(manager):
+
     """
     Runs the tunnel subscriber
     in its own event loop.

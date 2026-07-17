@@ -15,11 +15,14 @@ async def tunnel_gateway(
     websocket: WebSocket,
     token: str,
 ):
+
+    print("===== TUNNEL GATEWAY CONNECTED =====")
     await manager.connect(
         websocket,
         token,
         "token",
     )
+    print(manager.token_connections)
 
     print(f"[gateway] tunnel connected: {token}")
 
@@ -29,7 +32,7 @@ async def tunnel_gateway(
 
             raw = await websocket.receive_text()
 
-            data = json.loads(raw)
+            data = await websocket.receive_json()
 
             message_type = data.get("type")
 
