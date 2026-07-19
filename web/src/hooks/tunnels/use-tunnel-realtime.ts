@@ -13,10 +13,11 @@ const WS_URL =
 export function useTunnelRealtime(
   tunnelId?: string,
 ) {
-  const queryClient =
-    useQueryClient()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
+    let disposed = false
+
     const socket = new WebSocket(
       WS_URL,
     )
@@ -35,6 +36,14 @@ export function useTunnelRealtime(
           event.data,
         )
 
+        if (
+          !message.type?.startsWith(
+            "tunnel.",
+          )
+        ) {
+          return
+        }
+
         switch (message.type) {
           case "tunnel.created":
           case "tunnel.updated":
@@ -42,7 +51,6 @@ export function useTunnelRealtime(
           case "tunnel.connected":
           case "tunnel.disconnected":
           case "tunnel.request":
-
             queryClient.invalidateQueries({
               queryKey:
                 QueryKeys.tunnels,
@@ -81,28 +89,38 @@ export function useTunnelRealtime(
         }
       } catch (err) {
         console.error(
-          "[TunnelRealtime]",
+          "[TunnelRealtime] Failed to parse message",
           err,
         )
       }
     }
 
-    socket.onerror = (
-      error,
-    ) => {
-      console.error(
-        "[TunnelRealtime]",
-        error,
-      )
+    socket.onerror = () => {
+      if (!disposed) {
+        console.error(
+          "[TunnelRealtime] WebSocket error",
+        )
+      }
     }
 
-    socket.onclose = () => {
-      console.log(
-        "[TunnelRealtime] Disconnected",
-      )
+    socket.onclose = (
+      event,
+    ) => {
+      if (!disposed) {
+        console.log(
+          "[TunnelRealtime] Closed",
+          {
+            code: event.code,
+            reason: event.reason,
+            wasClean:
+              event.wasClean,
+          },
+        )
+      }
     }
 
     return () => {
+      disposed = true
       socket.close()
     }
   }, [
