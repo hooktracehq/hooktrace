@@ -1,16 +1,10 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import type { Event } from "@/types/event"
 
 type Props = {
-  issue: {
-    provider: string
-    route: string
-    error: string
-    retries: number
-    severity: string
-    timestamp: string
-  }
+  issue: Event
   selected?: boolean
   onClick?: () => void
 }
@@ -20,69 +14,93 @@ export function IssueRow({
   selected,
   onClick,
 }: Props) {
+  const status = "Failed"
+
   return (
     <button
       onClick={onClick}
       className={cn(
         `
-          grid
-          grid-cols-[120px_1fr_1fr_120px_120px_140px]
-          items-center
-          border-b border-border
-          px-5 py-3 text-left
-          transition-colors
-          hover:bg-white/[0.02]
+        grid
+        grid-cols-[120px_120px_1fr_1.4fr_100px_180px]
+        items-center
+        border-b border-border
+        px-5 py-3
+        text-left
+        transition-colors
+        hover:bg-white/[0.02]
         `,
-        selected &&
-          "bg-white/[0.03]"
+        selected && "bg-white/[0.03]"
       )}
     >
+      {/* Status */}
 
       <div>
-
         <span
           className="
-            rounded-full border border-border
-            bg-background/30
-            px-2 py-1 text-xs uppercase
+          inline-flex
+          items-center
+          rounded-full
+          border border-rose-500/20
+          bg-rose-500/10
+          px-2.5 py-1
+          text-xs font-medium
+          text-rose-400
+          "
+        >
+          {status}
+        </span>
+      </div>
+
+      {/* Provider */}
+
+      <div>
+        <span
+          className="
+          rounded-full
+          border border-border
+          bg-background/30
+          px-2 py-1
+          text-xs uppercase
           "
         >
           {issue.provider}
         </span>
-
       </div>
+
+      {/* Route */}
 
       <div className="truncate font-medium">
         {issue.route}
       </div>
 
-      <div className="truncate text-rose-400">
-        {issue.error}
+      {/* Error */}
+
+      <div
+        className="
+        truncate
+        text-sm
+        text-rose-400
+        "
+      >
+        {issue.last_error ?? "Unknown error"}
       </div>
 
-      <div>
-        {issue.retries}
-      </div>
+      {/* Attempts */}
 
-      <div>
-
-        <span
-          className="
-            rounded-full
-            bg-rose-500/10
-            px-2 py-1 text-xs
-            text-rose-400
-          "
-        >
-          {issue.severity}
+      <div className="text-sm">
+        {issue.attempt_count ?? 0}
+        <span className="text-muted-foreground">
+          {" "}
+          / 5
         </span>
-
       </div>
 
-      <div className="text-muted-foreground">
-        {issue.timestamp}
-      </div>
+      {/* Updated */}
 
+      <div className="text-sm text-muted-foreground">
+        {new Date(issue.created_at).toLocaleString()}
+      </div>
     </button>
   )
 }

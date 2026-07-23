@@ -9,14 +9,22 @@ export function ReplayPanel() {
   return (
     <div className="border-t border-border p-5">
 
-      <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4">
+      <div
+        className="
+          rounded-2xl
+          border border-orange-500/20
+          bg-orange-500/5
+          p-4
+        "
+      >
 
         <div className="flex items-start gap-3">
 
           <div
             className="
               flex h-10 w-10 items-center justify-center
-              rounded-xl border border-orange-500/20
+              rounded-xl
+              border border-orange-500/20
               bg-orange-500/10
             "
           >
@@ -26,34 +34,41 @@ export function ReplayPanel() {
           <div className="flex-1">
 
             <h3 className="text-sm font-semibold">
-              Replay Failed Event
+              Recovery Actions
             </h3>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              retry this failed delivery back into the pipeline
+              Replay this delivery back into the pipeline or perform additional recovery operations.
             </p>
 
-            <button
-              className="
-                mt-4 flex items-center gap-2
-                rounded-xl border border-orange-500/20
-                bg-orange-500/10
-                px-4 py-2 text-sm
-                text-orange-400
-              "
-            >
+            <div className="mt-4 flex flex-wrap gap-3">
 
-              <RotateCcw className="h-4 w-4" />
+              <button
+                className="
+                  flex items-center gap-2
+                  rounded-xl
+                  border border-orange-500/20
+                  bg-orange-500/10
+                  px-4 py-2
+                  text-sm
+                  text-orange-400
+                  transition-colors
+                  hover:bg-orange-500/15
+                "
+              >
+                <RotateCcw className="h-4 w-4" />
 
-              Replay Event
+                Replay Delivery
+              </button>
 
-            </button>
+            </div>
 
           </div>
 
         </div>
 
       </div>
+
     </div>
   )
 }

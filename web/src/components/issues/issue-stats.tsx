@@ -1,50 +1,76 @@
 "use client"
 
-const stats = [
-  {
-    label: "Failures",
-    value: "142",
-  },
+import { useDlqCount } from "@/hooks/use-dlq"
 
-  {
-    label: "DLQ Size",
-    value: "28",
-  },
+type StatCardProps = {
+  title: string
+  value: string | number
+  subtitle: string
+  bordered?: boolean
+}
 
-  {
-    label: "Retrying",
-    value: "19",
-  },
+function StatCard({
+  title,
+  value,
+  subtitle,
+  bordered = true,
+}: StatCardProps) {
+  return (
+    <div
+      className={`
+        px-5 py-4
+        ${bordered ? "border-r border-border" : ""}
+      `}
+    >
+      <p className="text-xs text-muted-foreground">
+        {title}
+      </p>
 
-  {
-    label: "Recovery Rate",
-    value: "94%",
-  },
-]
+      <p className="mt-2 text-2xl font-semibold">
+        {value}
+      </p>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        {subtitle}
+      </p>
+    </div>
+  )
+}
 
 export function IssueStats() {
+  const { data, isLoading } = useDlqCount()
+
   return (
     <div className="grid grid-cols-4 border-b border-border">
 
-      {stats.map((stat) => (
-        <div
-          key={stat.label}
-          className="
-            border-r border-border
-            px-5 py-4 last:border-r-0
-          "
-        >
+      <StatCard
+        title="Failed Deliveries"
+        value="—"
+        subtitle="Currently requiring attention"
+      />
 
-          <p className="text-xs text-muted-foreground">
-            {stat.label}
-          </p>
+      <StatCard
+        title="Dead Letters"
+        value={
+          isLoading
+            ? "..."
+            : data?.dlq_count ?? 0
+        }
+        subtitle="Retries exhausted"
+      />
 
-          <p className="mt-2 text-2xl font-semibold">
-            {stat.value}
-          </p>
+      <StatCard
+        title="Active Retries"
+        value="—"
+        subtitle="Recovery in progress"
+      />
 
-        </div>
-      ))}
+      <StatCard
+        title="Recovery Rate"
+        value="—"
+        subtitle="Past 24 hours"
+        bordered={false}
+      />
 
     </div>
   )

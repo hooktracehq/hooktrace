@@ -1,6 +1,7 @@
 "use client"
 
 import JsonView from "@uiw/react-json-view"
+import type { Event } from "@/types/event"
 
 import {
   AlertTriangle,
@@ -9,33 +10,34 @@ import {
 
 import { ReplayPanel } from "./replay-panel"
 
-type Issue = {
-  provider: string
-  route: string
-  error: string
-  retries: number
-  severity: string
-  timestamp: string
-}
-
 type Props = {
-  issue: Issue | null
+  issue: Event | null
 }
 
 export function IssueInspector({
   issue,
 }: Props) {
-
   if (!issue) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Select an issue
+      <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+        <AlertTriangle className="mb-4 h-10 w-10 text-muted-foreground/40" />
+
+        <h3 className="text-base font-medium">
+          Select a delivery
+        </h3>
+
+        <p className="mt-2 text-sm text-muted-foreground">
+          Choose a failed delivery from the stream to inspect
+          diagnostics, payload, retries and recovery actions.
+        </p>
       </div>
     )
   }
 
   return (
     <div className="flex h-full flex-col">
+
+      {/* Header */}
 
       <div className="border-b border-border p-5">
 
@@ -54,11 +56,11 @@ export function IssueInspector({
           <div>
 
             <h2 className="text-lg font-semibold">
-              Issue Inspector
+              Delivery Details
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              delivery failure diagnostics
+              Operational diagnostics & recovery
             </p>
 
           </div>
@@ -67,39 +69,104 @@ export function IssueInspector({
 
       </div>
 
-      <div className="space-y-3 border-b border-border p-5 text-sm">
+      {/* Overview */}
+
+      <div className="space-y-4 border-b border-border p-5 text-sm">
+
+        <div className="flex items-center justify-between">
+
+          <span className="text-muted-foreground">
+            Status
+          </span>
+
+          <span
+            className="
+              rounded-full
+              border border-rose-500/20
+              bg-rose-500/10
+              px-2.5 py-1
+              text-xs font-medium
+              text-rose-400
+            "
+          >
+            Failed Delivery
+          </span>
+
+        </div>
 
         <div className="flex justify-between">
+
           <span className="text-muted-foreground">
             Provider
           </span>
 
-          <span>
-            {issue.provider}
+          <span>{issue.provider}</span>
+
+        </div>
+
+        <div className="flex justify-between gap-6">
+
+          <span className="text-muted-foreground">
+            Route
           </span>
+
+          <span className="truncate text-right">
+            {issue.route}
+          </span>
+
+        </div>
+
+        <div className="flex justify-between gap-6">
+
+          <span className="text-muted-foreground">
+            Event Type
+          </span>
+
+          <span className="truncate text-right">
+            {issue.event_type}
+          </span>
+
         </div>
 
         <div className="flex justify-between">
+
           <span className="text-muted-foreground">
-            Retries
+            Attempts
           </span>
 
           <span>
-            {issue.retries}
+            {issue.attempt_count ?? 0} / 5
           </span>
+
+        </div>
+
+        <div className="flex justify-between gap-6">
+
+          <span className="text-muted-foreground">
+            Last Error
+          </span>
+
+          <span className="max-w-[220px] break-words text-right text-rose-400">
+            {issue.last_error ?? "-"}
+          </span>
+
         </div>
 
         <div className="flex justify-between">
+
           <span className="text-muted-foreground">
-            Severity
+            Created
           </span>
 
-          <span className="text-rose-400">
-            {issue.severity}
+          <span>
+            {new Date(issue.created_at).toLocaleString()}
           </span>
+
         </div>
 
       </div>
+
+      {/* Failure Details */}
 
       <div className="flex-1 overflow-auto p-5">
 
@@ -108,7 +175,7 @@ export function IssueInspector({
           <RotateCcw className="h-4 w-4 text-orange-400" />
 
           <h3 className="text-sm font-semibold">
-            Failure Payload
+            Failure Details
           </h3>
 
         </div>
@@ -117,21 +184,25 @@ export function IssueInspector({
           className="
             overflow-hidden rounded-xl
             border border-border
-            bg-background/40 p-4
+            bg-background/40
+            p-4
           "
         >
-
           <JsonView
             value={{
+              id: issue.id,
+              status: issue.status,
               provider: issue.provider,
               route: issue.route,
-              error: issue.error,
-              retries: issue.retries,
+              event_type: issue.event_type,
+              attempts: issue.attempt_count,
+              last_error: issue.last_error,
+              created_at: issue.created_at,
+              payload: issue.payload,
             }}
             displayDataTypes={false}
             displayObjectSize={false}
           />
-
         </div>
 
       </div>

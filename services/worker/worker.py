@@ -44,31 +44,39 @@ MAX_RETRIES = 5
 # REALTIME UPDATES
 # =========================
 def publish_update(
-    event_id: int,
-    status: str,
-    attempt: int = 0,
-    user_id: str = None,
-    provider: str = None,
-    route: str = None,
-    token: str = None,
-    created_at: str = None,
+    event_id,
+    status,
+    attempt=0,
+    user_id=None,
+    provider=None,
+    route=None,
+    token=None,
+    created_at=None,
 ):
-    redis_client.publish(
-        "events:updates",
-        json.dumps(
-            {
-                "id": event_id,
-                "status": status,
-                "attempt_count": attempt,
-                "user_id": user_id,
-                "provider": provider,
-                "route": route,
-                "token": token,
-                "created_at": created_at,
-            }
-        ),
-    )
+    try:
+        payload = {
+            "id": event_id,
+            "status": status,
+            "attempt_count": attempt or 0,
+            "user_id": str(user_id) if user_id else None,
+            "provider": provider,
+            "route": route,
+            "token": token,
+            "created_at": created_at.isoformat() if created_at else None,
+        }
 
+        subscribers = redis_client.publish(
+            "events:updates",
+            json.dumps(payload),
+        )
+
+        print(
+            f"[publish_update] Event {event_id} -> {status} "
+            f"(subscribers={subscribers})"
+        )
+
+    except Exception as e:
+        print(f"[publish_update] ERROR: {e}")
 
 # =========================
 # BATCH PROCESSING
@@ -80,22 +88,27 @@ def publish_update(
 # EVENT DELIVERY
 # =========================
 def deliver_event(event_id: int):
+    print("🔥 worker started")
     db = SessionLocal()
 
     try:
         # =========================
         # CLAIM EVENT
         # =========================
+        print(f"Trying to claim event {event_id}")
         claimed = db.execute(
+            
             text("""
                 UPDATE webhook_events
                 SET status = 'processing'
                 WHERE id = :id
-                AND status IN ('queued', 'retrying')
+                AND status IN ('pending', 'queued', 'retrying')
             """),
             {"id": event_id},
-        )
 
+            
+        )
+        print("claimed rows:", claimed.rowcount)
         if claimed.rowcount == 0:
             db.rollback()
             return
@@ -126,7 +139,7 @@ def deliver_event(event_id: int):
             ),
             {"id": event_id},
         ).mappings().first()
-
+        print("loaded row:", row)
         if not row:
             print(f"[worker] Event {event_id} not found")
             return
@@ -149,6 +162,7 @@ def deliver_event(event_id: int):
             except Exception:
                 headers = {}
 
+        print("About to call publish_update()")
         publish_update(
             event_id=event_id,
             status="processing",
@@ -159,11 +173,12 @@ def deliver_event(event_id: int):
             token=row["token"],
             created_at=row["created_at"],
         )
-
+        print("2. publish_update done")
         # =========================
         # AGGREGATION
         # =========================
         try:
+            print("3. loading aggregation rules")
             rules = db.execute(
                 text(
                     """
@@ -175,6 +190,8 @@ def deliver_event(event_id: int):
                 ),
                 {"user_id": user_id},
             ).mappings().all()
+
+            print("4. aggregation rules loaded", len(rules))
 
             # for rule in rules:
             #     if match_event(rule, payload, row["provider"]):
@@ -188,6 +205,8 @@ def deliver_event(event_id: int):
 
         except Exception as e:
             print(f"[worker] aggregation error: {e}")
+
+        print("5. before mode check")
 
         # =========================
         # DEV MODE
@@ -238,134 +257,80 @@ def deliver_event(event_id: int):
         # =========================
         # DELIVERY TARGETS
         # =========================
-        try:
-            result = asyncio.run(
+        
+        print("Calling router...")
+        delivery_payload = {
+        **payload,
+        "event_id": event_id,
+}
+        result = asyncio.run(
                 route_webhook_to_targets(
                     user_id=user_id,
-                    webhook_data=payload,
+                    webhook_data=delivery_payload,
                     provider=row["provider"],
                 )
             )
 
-            print("ROUTER RESULT:", result)
+        print("ROUTER RESULT:", result)
 
             # =========================
             # SUCCESS / FAILURE
             # =========================
-            if result["failed"] > 0:
-                attempts = row["attempt_count"] + 1
+           
 
-                # DLQ transition
-                if attempts >= MAX_RETRIES:
-                    db.execute(
-                        text("""
-                            UPDATE webhook_events
-                            SET
-                                status='dlq',
-                                attempt_count=:attempts,
-                                last_error='max retries exceeded'
-                            WHERE id=:id
-                        """),
-                        {
-                            "id": event_id,
-                            "attempts": attempts,
-                        },
-                    )
+        successful = result.get("successful", 0)
+        failed = result.get("failed", 0)
 
-                    redis_client.lpush(
-                        QUEUE_DLQ,
-                        str(event_id)
-                    )
+            # At least one delivery succeeded
+        if successful > 0:
 
-                    status = "dlq"
-
-                else:
-                    retry_at = next_retry_time(attempts)
-
-                    db.execute(
-                        text("""
-                            UPDATE webhook_events
-                            SET
-                                status='retrying',
-                                attempt_count=:attempts,
-                                last_error='multi-target failure',
-                                next_retry_at=:retry_at
-                            WHERE id=:id
-                        """),
-                        {
-                            "id": event_id,
-                            "attempts": attempts,
-                            "retry_at": retry_at,
-                        },
-                    )
-
-                    events_retried.inc()
-
-                    status = "retrying"
-
-                events_failed.inc()
-
-            else:
-                db.execute(
-                    text("""
-                        UPDATE webhook_events
-                        SET
-                            status='delivered',
-                            last_error=NULL,
-                            next_retry_at=NULL
-                        WHERE id=:id
-                    """),
-                    {"id": event_id},
-                )
-
-                events_delivered.inc()
-
-                status = "delivered"
-
-            db.commit()
-
-            publish_update(
-                event_id=event_id,
-                status=status,
-                attempt=row["attempt_count"],
-                user_id=row["user_id"],
-                provider=row["provider"],
-                route=row["route"],
-                token=row["token"],
-                created_at=row["created_at"],
+            db.execute(
+                text("""
+                    UPDATE webhook_events
+                    SET
+                        status='delivered',
+                        last_error=NULL,
+                        next_retry_at=NULL
+                    WHERE id=:id
+                """),
+                {"id": event_id},
             )
 
-        except Exception as e:
-            print(f"[worker] router error: {e}")
+            events_delivered.inc()
 
-            attempts = row["attempt_count"] + 1
+            status = "delivered"
 
-            # DLQ transition
+        # All deliveries failed
+        elif failed > 0:
+
+            attempts = (row.get("attempt_count") or 0) + 1
+
             if attempts >= MAX_RETRIES:
+
                 db.execute(
                     text("""
                         UPDATE webhook_events
                         SET
                             status='dlq',
                             attempt_count=:attempts,
-                            last_error=:error
+                            last_error='max retries exceeded'
                         WHERE id=:id
                     """),
                     {
                         "id": event_id,
                         "attempts": attempts,
-                        "error": str(e),
                     },
                 )
 
                 redis_client.lpush(
                     QUEUE_DLQ,
-                    str(event_id)
+                    str(event_id),
                 )
 
                 status = "dlq"
 
             else:
+
                 retry_at = next_retry_time(attempts)
 
                 db.execute(
@@ -374,14 +339,13 @@ def deliver_event(event_id: int):
                         SET
                             status='retrying',
                             attempt_count=:attempts,
-                            last_error=:error,
+                            last_error='all delivery targets failed',
                             next_retry_at=:retry_at
                         WHERE id=:id
                     """),
                     {
                         "id": event_id,
                         "attempts": attempts,
-                        "error": str(e),
                         "retry_at": retry_at,
                     },
                 )
@@ -390,20 +354,41 @@ def deliver_event(event_id: int):
 
                 status = "retrying"
 
-            db.commit()
-
             events_failed.inc()
 
-            publish_update(
-                event_id=event_id,
-                status=status,
-                attempt=attempts,
-                user_id=row["user_id"],
-                provider=row["provider"],
-                route=row["route"],
-                token=row["token"],
-                created_at=row["created_at"],
+        # No delivery targets configured
+        else:
+
+            db.execute(
+                text("""
+                    UPDATE webhook_events
+                    SET
+                        status='delivered',
+                        last_error=NULL,
+                        next_retry_at=NULL
+                    WHERE id=:id
+                """),
+                {"id": event_id},
             )
+
+            events_delivered.inc()
+
+            status = "delivered"
+
+        db.commit()
+
+        publish_update(
+            event_id=event_id,
+            status=status,
+            attempt=row["attempt_count"],
+            user_id=row["user_id"],
+            provider=row["provider"],
+            route=row["route"],
+            token=row["token"],
+            created_at=row["created_at"],
+        )
+
+    
 
     finally:
         db.close()

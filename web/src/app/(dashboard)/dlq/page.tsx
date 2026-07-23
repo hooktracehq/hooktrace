@@ -9,65 +9,45 @@ import {
 } from "react-resizable-panels"
 
 import { IssuesToolbar } from "@/components/issues/issues-toolbar"
-
 import { IssueStats } from "@/components/issues/issue-stats"
-
 import { IssueStream } from "@/components/issues/issue-stream"
-
 import { IssueInspector } from "@/components/issues/issue-inspector"
 
-const issues = Array.from({
-  length: 18,
-}).map((_, i) => ({
-  provider:
-    i % 2 === 0
-      ? "stripe"
-      : "github",
+import { useDlq } from "@/hooks/events/useDlq"
 
-  route:
-    i % 2 === 0
-      ? "/webhooks/stripe"
-      : "/webhooks/github",
-
-  error:
-    i % 2 === 0
-      ? "signature verification failed"
-      : "timeout exceeded",
-
-  retries: i % 4,
-
-  severity:
-    i % 3 === 0
-      ? "critical"
-      : "warning",
-
-  timestamp: `${i + 1}m ago`,
-}))
+import type { Event } from "@/types/event"
 
 export default function IssuesWorkspace() {
+  const {
+    data,
+    isLoading,
+  } = useDlq()
 
   const [query, setQuery] =
     useState("")
 
   const [selected, setSelected] =
-    useState<
-      (typeof issues)[number] | null
-    >(null)
+    useState<Event | null>(null)
 
-  const filtered =
-    useMemo(() => {
+  const issues =
+    data?.items ?? []
 
-      return issues.filter((issue) =>
+  const filtered = useMemo(() => {
+    const q =
+      query.toLowerCase()
+
+    return issues.filter(
+      (issue) =>
         `
           ${issue.provider}
           ${issue.route}
-          ${issue.error}
+          ${issue.last_error}
+          ${issue.event_type}
         `
           .toLowerCase()
-          .includes(query.toLowerCase())
-      )
-
-    }, [query])
+          .includes(q),
+    )
+  }, [issues, query])
 
   return (
     <div
@@ -78,7 +58,6 @@ export default function IssuesWorkspace() {
         bg-surface-1
       "
     >
-
       <IssuesToolbar
         query={query}
         setQuery={setQuery}
@@ -87,39 +66,33 @@ export default function IssuesWorkspace() {
       <IssueStats />
 
       <PanelGroup direction="horizontal">
-
         <Panel
           defaultSize={68}
           minSize={45}
         >
-
           <IssueStream
             issues={filtered}
             selected={selected}
             onSelect={setSelected}
+            loading={isLoading}
           />
-
         </Panel>
 
-        <PanelResizeHandle className="w-2 bg-border/40" />
+        <PanelResizeHandle
+          className="w-2 bg-border/40"
+        />
 
         <Panel
           defaultSize={32}
           minSize={24}
         >
-
           <div className="h-full border-l border-border bg-background/20">
-
             <IssueInspector
               issue={selected}
             />
-
           </div>
-
         </Panel>
-
       </PanelGroup>
-
     </div>
   )
 }

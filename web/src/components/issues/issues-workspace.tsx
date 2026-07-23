@@ -9,76 +9,52 @@ import {
 } from "react-resizable-panels"
 
 import { IssuesToolbar } from "./issues-toolbar"
-
 import { IssueStats } from "./issue-stats"
-
 import { IssueStream } from "./issue-stream"
-
 import { IssueInspector } from "./issue-inspector"
 
-const issues = Array.from({
-  length: 18,
-}).map((_, i) => ({
-  provider:
-    i % 2 === 0
-      ? "stripe"
-      : "github",
+import { useDlq } from "@/hooks/events/useDlq"
 
-  route:
-    i % 2 === 0
-      ? "/webhooks/stripe"
-      : "/webhooks/github",
-
-  error:
-    i % 2 === 0
-      ? "signature verification failed"
-      : "timeout exceeded",
-
-  retries: i % 4,
-
-  severity:
-    i % 3 === 0
-      ? "critical"
-      : "warning",
-
-  timestamp: `${i + 1}m ago`,
-}))
+import type { Event } from "@/types/event"
 
 export function IssuesWorkspace() {
+  const { data, isLoading } = useDlq()
 
-  const [query, setQuery] =
-    useState("")
+  const [query, setQuery] = useState("")
+  const [selected, setSelected] = useState<Event | null>(null)
 
-  const [selected, setSelected] =
-    useState<
-      (typeof issues)[number] | null
-    >(null)
+  const issues = data?.items ?? []
 
-  const filtered =
-    useMemo(() => {
+  const filtered = useMemo(() => {
+    const search = query.trim().toLowerCase()
 
-      return issues.filter((issue) =>
-        `
-          ${issue.provider}
-          ${issue.route}
-          ${issue.error}
-        `
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      )
+    if (!search) return issues
 
-    }, [query])
+    return issues.filter((issue) =>
+      [
+        issue.provider,
+        issue.route,
+        issue.event_type,
+        issue.last_error,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(search)
+    )
+  }, [issues, query])
 
   return (
     <div
       className="
-        flex h-[calc(100vh-92px)]
-        flex-col overflow-hidden
-        rounded-2xl border border-border
+        flex
+        h-[calc(100vh-92px)]
+        flex-col
+        overflow-hidden
+        rounded-2xl
+        border border-border
         bg-surface-1
       "
     >
-
       <IssuesToolbar
         query={query}
         setQuery={setQuery}
@@ -92,13 +68,12 @@ export function IssuesWorkspace() {
           defaultSize={68}
           minSize={45}
         >
-
           <IssueStream
             issues={filtered}
             selected={selected}
             onSelect={setSelected}
+            loading={isLoading}
           />
-
         </Panel>
 
         <PanelResizeHandle className="w-2 bg-border/40" />
@@ -107,19 +82,12 @@ export function IssuesWorkspace() {
           defaultSize={32}
           minSize={24}
         >
-
           <div className="h-full border-l border-border bg-background/20">
-
-            <IssueInspector
-              issue={selected}
-            />
-
+            <IssueInspector issue={selected} />
           </div>
-
         </Panel>
 
       </PanelGroup>
-
     </div>
   )
 }

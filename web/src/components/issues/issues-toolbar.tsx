@@ -18,65 +18,76 @@ export function IssuesToolbar({
   return (
     <div className="flex items-center justify-between border-b border-border px-5 py-4">
 
+      {/* Left */}
+
       <div className="flex items-center gap-3">
 
         <div className="flex items-center gap-2">
 
-          <div className="h-2 w-2 rounded-full bg-rose-500" />
+          <AlertTriangle className="h-4 w-4 text-rose-400" />
 
           <h1 className="text-lg font-semibold">
-            Issues / DLQ
+            Issues & Recovery
           </h1>
 
         </div>
 
         <span className="text-sm text-muted-foreground">
-          failed deliveries & retries
+          Operational issues, recovery & replay
         </span>
 
       </div>
+
+      {/* Right */}
 
       <div className="flex items-center gap-3">
 
         <div
           className="
-            flex items-center gap-2
-            rounded-xl border border-border
+            flex
+            w-[340px]
+            items-center
+            gap-2
+            rounded-xl
+            border
+            border-border
             bg-background/30
-            px-3 py-2
+            px-3
+            py-2
           "
         >
-
           <Search className="h-4 w-4 text-muted-foreground" />
 
           <input
             value={query}
-            onChange={(e) =>
-              setQuery(e.target.value)
-            }
-            placeholder="Search failures..."
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search issues, routes, providers..."
             className="
-              bg-transparent text-sm
-              outline-none placeholder:text-muted-foreground
+              w-full
+              bg-transparent
+              text-sm
+              outline-none
+              placeholder:text-muted-foreground
             "
           />
-
         </div>
 
         <button
           className="
             flex items-center gap-2
-            rounded-xl border border-orange-500/20
+            rounded-xl
+            border border-orange-500/20
             bg-orange-500/10
-            px-4 py-2 text-sm
+            px-4 py-2
+            text-sm
             text-orange-400
+            transition-colors
+            hover:bg-orange-500/15
           "
         >
-
           <RotateCcw className="h-4 w-4" />
 
-          Replay Failed
-
+          Replay Selected
         </button>
 
       </div>
