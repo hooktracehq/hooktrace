@@ -1,6 +1,7 @@
 "use client"
 
 import JsonView from "@uiw/react-json-view"
+
 import type { Event } from "@/types/event"
 
 import {
@@ -46,7 +47,8 @@ export function IssueInspector({
           <div
             className="
               flex h-11 w-11 items-center justify-center
-              rounded-xl border border-rose-500/20
+              rounded-xl
+              border border-rose-500/20
               bg-rose-500/10
             "
           >
@@ -80,16 +82,22 @@ export function IssueInspector({
           </span>
 
           <span
-            className="
+            className={`
               rounded-full
-              border border-rose-500/20
-              bg-rose-500/10
-              px-2.5 py-1
-              text-xs font-medium
-              text-rose-400
-            "
+              px-2.5
+              py-1
+              text-xs
+              font-medium
+              ${
+                issue.status === "retrying"
+                  ? "border border-amber-500/20 bg-amber-500/10 text-amber-400"
+                  : "border border-rose-500/20 bg-rose-500/10 text-rose-400"
+              }
+            `}
           >
-            Failed Delivery
+            {issue.status === "retrying"
+              ? "Retrying"
+              : "Dead Letter"}
           </span>
 
         </div>
@@ -182,7 +190,8 @@ export function IssueInspector({
 
         <div
           className="
-            overflow-hidden rounded-xl
+            overflow-hidden
+            rounded-xl
             border border-border
             bg-background/40
             p-4
@@ -207,7 +216,7 @@ export function IssueInspector({
 
       </div>
 
-      <ReplayPanel />
+      <ReplayPanel eventId={issue.id} />
 
     </div>
   )

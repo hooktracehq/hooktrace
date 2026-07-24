@@ -13,6 +13,7 @@ VALID_STATUSES = {
     "processing",
     "delivered",
     "failed",
+    "retrying",
     "dlq",
 }
 
@@ -100,6 +101,59 @@ def list_events(
         db.close()
 
 
+
+
+
+@router.get("/issues")
+def get_operational_issues(
+    limit: int = Query(50, le=200),
+    offset: int = 0,
+    user_id: str = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        rows = db.execute(
+            text("""
+                SELECT
+                    e.id,
+                    e.route_id,
+                    r.token,
+                    r.route,
+                    e.provider,
+                    e.event_type,
+                    e.status,
+                    e.attempt_count,
+                    e.last_error,
+                    e.created_at
+                FROM webhook_events e
+                JOIN webhook_routes r
+                  ON e.route_id = r.id
+                WHERE r.user_id = :user_id
+                  AND e.status IN (
+                      'retrying',
+                      'dlq'
+                  )
+                ORDER BY e.created_at DESC
+                LIMIT :limit
+                OFFSET :offset
+            """),
+            {
+                "user_id": user_id,
+                "limit": limit,
+                "offset": offset,
+            },
+        ).mappings().all()
+
+        return {
+            "items": [dict(r) for r in rows],
+            "limit": limit,
+            "offset": offset,
+        }
+
+    finally:
+        db.close()
+
 # =============================
 # GET SINGLE EVENT
 # =============================
@@ -156,34 +210,104 @@ def get_event(
 # DLQ COUNT
 # =============================
 
-@router.get("/stats/dlq-count")
-def get_dlq_count(
+# @router.get("/stats/dlq-count")
+# def get_dlq_count(
+#     user_id: str = Depends(get_current_user),
+# ):
+#     db = SessionLocal()
+
+#     try:
+#         result = db.execute(
+#             text("""
+#                 SELECT COUNT(*) as count
+#                 FROM webhook_events e
+#                 JOIN webhook_routes r
+#                   ON e.route_id = r.id
+#                 WHERE r.user_id = :user_id
+#                   AND e.status = 'dlq'
+#             """),
+#             {
+#                 "user_id": user_id
+#             },
+#         ).fetchone()
+
+#         return {
+#             "dlq_count": result[0] if result else 0
+#         }
+
+#     finally:
+#         db.close()
+
+
+
+
+
+
+
+
+
+@router.get("/stats/issues")
+def get_issue_stats(
     user_id: str = Depends(get_current_user),
 ):
     db = SessionLocal()
 
     try:
-        result = db.execute(
+
+        stats = db.execute(
             text("""
-                SELECT COUNT(*) as count
+                SELECT
+
+                    COUNT(*) FILTER (
+                        WHERE e.status = 'retrying'
+                    ) AS active_retries,
+
+                    COUNT(*) FILTER (
+                        WHERE e.status = 'dlq'
+                    ) AS dead_letters,
+
+                    COUNT(*) FILTER (
+                        WHERE e.status = 'failed'
+                    ) AS failed_deliveries,
+
+                    COUNT(*) FILTER (
+                        WHERE e.status = 'delivered'
+                    ) AS delivered
+
                 FROM webhook_events e
                 JOIN webhook_routes r
-                  ON e.route_id = r.id
+                  ON r.id = e.route_id
+
                 WHERE r.user_id = :user_id
-                  AND e.status = 'dlq'
             """),
             {
-                "user_id": user_id
+                "user_id": user_id,
             },
-        ).fetchone()
+        ).mappings().first()
+
+        delivered = stats["delivered"] or 0
+        failed = (
+            stats["failed_deliveries"]
+            + stats["dead_letters"]
+        )
+
+        total = delivered + failed
+
+        recovery_rate = (
+            round((delivered / total) * 100, 1)
+            if total
+            else 100
+        )
 
         return {
-            "dlq_count": result[0] if result else 0
+            "failed_deliveries": stats["failed_deliveries"],
+            "active_retries": stats["active_retries"],
+            "dead_letters": stats["dead_letters"],
+            "recovery_rate": recovery_rate,
         }
 
     finally:
         db.close()
-
 
 # =============================
 # GET EVENT DELIVERIES
@@ -230,6 +354,83 @@ def get_event_deliveries(
         return {
             "items": [dict(r) for r in rows]
         }
+
+    finally:
+        db.close()
+
+
+
+
+from services.shared.redis_client import redis_client
+
+QUEUE_MAIN = "webhook:ingress"
+
+
+
+@router.post("/{id}/replay")
+def replay_event(
+    id: int,
+    user_id: str = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+
+        event = db.execute(
+            text("""
+                SELECT
+                    e.id
+                FROM webhook_events e
+                JOIN webhook_routes r
+                  ON e.route_id = r.id
+                WHERE e.id = :id
+                  AND r.user_id = :user_id
+
+                  AND e.status IN(
+                  'retrying',
+                  'dlq'
+                  )
+            """),
+            {
+                "id": id,
+                "user_id": user_id,
+            },
+        ).first()
+
+        if not event:
+            raise HTTPException(
+                status_code=404,
+                detail="Event not found",
+            )
+
+        db.execute(
+            text("""
+                UPDATE webhook_events
+                SET
+                    status='pending',
+                    last_error=NULL,
+                    next_retry_at=NULL
+                WHERE id=:id
+            """),
+            {
+                "id": id,
+            },
+        )
+
+        db.commit()
+
+        redis_client.lpush(
+            QUEUE_MAIN,
+            str(id),
+        )
+
+        return {
+    "success": True,
+    "event": {
+        "id": id,
+        "status": "pending",
+    },
+}
 
     finally:
         db.close()

@@ -13,12 +13,12 @@ import { IssueStats } from "./issue-stats"
 import { IssueStream } from "./issue-stream"
 import { IssueInspector } from "./issue-inspector"
 
-import { useDlq } from "@/hooks/events/useDlq"
+import { useOperationalIssues } from "@/hooks/issues/useOperationalIssues"
 
 import type { Event } from "@/types/event"
 
 export function IssuesWorkspace() {
-  const { data, isLoading } = useDlq()
+  const { data, isLoading } = useOperationalIssues()
 
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<Event | null>(null)

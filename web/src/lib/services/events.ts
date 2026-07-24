@@ -43,11 +43,48 @@ export function getDeliveries(id: number) {
   }>(`/events/${id}/deliveries`)
 }
 
-export function getDlqCount() {
+export function getOperationalIssues(params?: {
+  limit?: number
+  offset?: number
+}) {
+  const search = new URLSearchParams()
+
+  if (params?.limit)
+    search.set("limit", String(params.limit))
+
+  if (params?.offset)
+    search.set("offset", String(params.offset))
+
   return apiFetch<{
-    dlq_count: number
-  }>("/events/stats/dlq-count")
+    items: Event[]
+    limit: number
+    offset: number
+  }>(`/events/issues?${search}`)
 }
+
+
+export function getIssueStats() {
+  return apiFetch<{
+    failed_deliveries: number
+    active_retries: number
+    dead_letters: number
+    recovery_rate: number
+  }>("/events/stats/issues")
+}
+
+
+export function replayEvent(id: number) {
+  return apiFetch<{
+    success: boolean
+    event: {
+      id: number
+      status: string
+    }
+  }>(`/events/${id}/replay`, {
+    method: "POST",
+  })
+}
+
 
 
 export type EventsResponse = {

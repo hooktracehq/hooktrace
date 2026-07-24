@@ -5,7 +5,17 @@ import {
   ShieldAlert,
 } from "lucide-react"
 
-export function ReplayPanel() {
+import { useReplayEvent } from "@/hooks/issues/useReplayEvent"
+
+type ReplayPanelProps = {
+  eventId: number
+}
+
+export function ReplayPanel({
+  eventId,
+}: ReplayPanelProps) {
+  const replay = useReplayEvent()
+
   return (
     <div className="border-t border-border p-5">
 
@@ -38,12 +48,15 @@ export function ReplayPanel() {
             </h3>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              Replay this delivery back into the pipeline or perform additional recovery operations.
+              Replay this delivery back into the pipeline or perform
+              additional recovery operations.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">
 
               <button
+                disabled={replay.isPending}
+                onClick={() => replay.mutate(eventId)}
                 className="
                   flex items-center gap-2
                   rounded-xl
@@ -54,11 +67,15 @@ export function ReplayPanel() {
                   text-orange-400
                   transition-colors
                   hover:bg-orange-500/15
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
                 "
               >
                 <RotateCcw className="h-4 w-4" />
 
-                Replay Delivery
+                {replay.isPending
+                  ? "Replaying..."
+                  : "Replay Delivery"}
               </button>
 
             </div>

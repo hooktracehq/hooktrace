@@ -146,6 +146,8 @@ def deliver_event(event_id: int):
 
         user_id = row["user_id"]
 
+        # Track the current attempt count that will be sent to realtime clients
+        current_attempt = row.get("attempt_count") or 0
         payload = row["payload"]
 
         if isinstance(payload, str):
@@ -166,7 +168,7 @@ def deliver_event(event_id: int):
         publish_update(
             event_id=event_id,
             status="processing",
-            attempt=row["attempt_count"],
+            attempt=current_attempt,
             user_id=row["user_id"],
             provider=row["provider"],
             route=row["route"],
@@ -241,7 +243,7 @@ def deliver_event(event_id: int):
                 publish_update(
                     event_id=event_id,
                     status="delivered",
-                    attempt=row["attempt_count"],
+                    attempt=current_attempt,
                     user_id=row["user_id"],
                     provider=row["provider"],
                     route=row["route"],
@@ -303,7 +305,8 @@ def deliver_event(event_id: int):
         # All deliveries failed
         elif failed > 0:
 
-            attempts = (row.get("attempt_count") or 0) + 1
+            attempts = current_attempt + 1
+            current_attempt = attempts
 
             if attempts >= MAX_RETRIES:
 
@@ -380,7 +383,7 @@ def deliver_event(event_id: int):
         publish_update(
             event_id=event_id,
             status=status,
-            attempt=row["attempt_count"],
+            attempt=current_attempt,
             user_id=row["user_id"],
             provider=row["provider"],
             route=row["route"],

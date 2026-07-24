@@ -1,7 +1,6 @@
 "use client"
 
-import { useDlqCount } from "@/hooks/use-dlq"
-
+import { useIssueStats } from "@/hooks/issues/useIssueStats"
 type StatCardProps = {
   title: string
   value: string | number
@@ -38,39 +37,49 @@ function StatCard({
 }
 
 export function IssueStats() {
-  const { data, isLoading } = useDlqCount()
-
+  const { data, isLoading } = useIssueStats()
   return (
     <div className="grid grid-cols-4 border-b border-border">
-
-      <StatCard
-        title="Failed Deliveries"
-        value="—"
-        subtitle="Currently requiring attention"
-      />
+<StatCard
+  title="Failed Deliveries"
+  value={
+    isLoading
+      ? "..."
+      : data?.failed_deliveries ?? 0
+  }
+  subtitle="Currently requiring attention"
+/>
 
       <StatCard
         title="Dead Letters"
         value={
           isLoading
             ? "..."
-            : data?.dlq_count ?? 0
+            : data?.dead_letters ?? 0
         }
         subtitle="Retries exhausted"
       />
 
-      <StatCard
-        title="Active Retries"
-        value="—"
-        subtitle="Recovery in progress"
-      />
+<StatCard
+  title="Active Retries"
+  value={
+    isLoading
+      ? "..."
+      : data?.active_retries ?? 0
+  }
+  subtitle="Recovery in progress"
+/>
 
-      <StatCard
-        title="Recovery Rate"
-        value="—"
-        subtitle="Past 24 hours"
-        bordered={false}
-      />
+<StatCard
+  title="Recovery Rate"
+  value={
+    isLoading
+      ? "..."
+      : `${data?.recovery_rate ?? 100}%`
+  }
+  subtitle="Overall delivery health"
+  bordered={false}
+/>
 
     </div>
   )
