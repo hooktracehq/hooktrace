@@ -89,6 +89,10 @@ def publish_update(
 # =========================
 def deliver_event(event_id: int):
     print("🔥 worker started")
+
+    start = time.perf_counter()
+    row = None
+
     db = SessionLocal()
 
     try:
@@ -238,7 +242,9 @@ def deliver_event(event_id: int):
 
                 db.commit()
 
-                events_delivered.inc()
+                events_delivered.labels(
+    row.get("provider") or "unknown"
+).inc()
 
                 publish_update(
                     event_id=event_id,
@@ -251,6 +257,7 @@ def deliver_event(event_id: int):
                     created_at=row["created_at"],
                 )
 
+                
                 return
 
             except Exception as e:
@@ -265,6 +272,7 @@ def deliver_event(event_id: int):
         **payload,
         "event_id": event_id,
 }
+
         result = asyncio.run(
                 route_webhook_to_targets(
                     user_id=user_id,
@@ -298,7 +306,9 @@ def deliver_event(event_id: int):
                 {"id": event_id},
             )
 
-            events_delivered.inc()
+            events_delivered.labels(
+    row.get("provider") or "unknown"
+).inc()
 
             status = "delivered"
 
@@ -353,11 +363,15 @@ def deliver_event(event_id: int):
                     },
                 )
 
-                events_retried.inc()
+                events_retried.labels(
+    row.get("provider") or "unknown"
+).inc()
 
                 status = "retrying"
 
-            events_failed.inc()
+            events_failed.labels(
+    row.get("provider") or "unknown"
+).inc()
 
         # No delivery targets configured
         else:
@@ -374,7 +388,9 @@ def deliver_event(event_id: int):
                 {"id": event_id},
             )
 
-            events_delivered.inc()
+            events_delivered.labels(
+    row.get("provider") or "unknown"
+).inc()
 
             status = "delivered"
 
@@ -394,7 +410,17 @@ def deliver_event(event_id: int):
     
 
     finally:
-        db.close()
+            try:
+                if row:
+                    delivery_latency.labels(
+    row.get("provider") or "unknown"
+).observe(
+    time.perf_counter() - start
+)
+            except Exception as e:
+                print(f"[worker] metrics error: {e}")
+
+            db.close()
 
 
 # =========================
