@@ -1,5 +1,5 @@
 
-
+print(">>> routes.py loaded <<<")
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -25,8 +25,9 @@ router = APIRouter()
 
 
 @router.post("/r/{token}/{route}", status_code=status.HTTP_202_ACCEPTED)
-async def relay(token: str, route: str, request: Request):
 
+async def relay(token: str, route: str, request: Request):
+    print("RELAY CALLED")
     raw_body = await request.body()
 
     try:
@@ -91,18 +92,24 @@ async def relay(token: str, route: str, request: Request):
             )
 
         #  Signature validation
+        # Signature validation
         if route_secret and route_config["mode"] != "dev":
 
             provider_module = PROVIDERS.get(provider)
 
-            if provider_module and not provider_module.verify(request, route_secret):
-                webhooks_invalid_signature.inc()
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Invalid webhook signature"},
-                )
+            if provider_module:
+                print(f"[HOOKTRACE] Using provider verifier: {provider}")
+
+                if not provider_module.verify(request, route_secret):
+                    webhooks_invalid_signature.inc()
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Invalid webhook signature"},
+                    )
 
             else:
+                print("[HOOKTRACE] Using generic signature verification")
+
                 if not signature:
                     webhooks_invalid_signature.inc()
                     return JSONResponse(
@@ -122,25 +129,27 @@ async def relay(token: str, route: str, request: Request):
                         content={"detail": "Invalid signature"},
                     )
 
-        #  Idempotency protection
-        if idempotency_key:
-            existing = db.execute(
-                text(
-                    """
-                    SELECT id FROM webhook_events
-                    WHERE route_id = :route_id
-                    AND idempotency_key = :key
-                    """
-                ),
-                {
-                    "route_id": route_id,
-                    "key": idempotency_key,
-                },
-            ).fetchone()
+            print("[HOOKTRACE] Signature validation passed")
 
-            if existing:
-                webhooks_deduplicated.inc()
-                return {"accepted": True, "deduplicated": True}
+                #  Idempotency protection
+            if idempotency_key:
+                    existing = db.execute(
+                        text(
+                            """
+                            SELECT id FROM webhook_events
+                            WHERE route_id = :route_id
+                            AND idempotency_key = :key
+                            """
+                        ),
+                        {
+                            "route_id": route_id,
+                            "key": idempotency_key,
+                        },
+                    ).fetchone()
+
+                    if existing:
+                        webhooks_deduplicated.inc()
+                        return {"accepted": True, "deduplicated": True}
 
         #  Resolve delivery target
         delivery_target = (
@@ -181,6 +190,8 @@ async def relay(token: str, route: str, request: Request):
         db.refresh(event)
 
         #  Usage tracking (billing)
+        print("ABOUT TO INCREMENT")
+        
         db.execute(
             text(
                 """
@@ -198,10 +209,13 @@ async def relay(token: str, route: str, request: Request):
         )
         db.commit()
 
-        webhooks_received.labels(token=token, route=route).inc()
+        webhooks_received.labels(
+    provider=provider,
+    route=route,
+).inc()
 
         #  Enqueue worker
-        redis_client.lpush("webhook:aggregate", str(event.id))
+        redis_client.lpush("webhook:ingress", str(event.id))
 
         return {"accepted": True}
 

@@ -192,7 +192,26 @@ def metrics_endpoint():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-# -----------------------------
-# Dev tunnels
-# -----------------------------
 
+
+
+
+
+from .metrics_dashboard import (
+    router as metrics_dashboard_router,
+)
+
+app.include_router(metrics_dashboard_router)
+
+
+
+from .metrics import webhooks_received
+
+@app.get("/test-metric")
+def test_metric():
+    webhooks_received.labels(
+        provider="stripe",
+        route="test",
+    ).inc()
+
+    return {"ok": True}
