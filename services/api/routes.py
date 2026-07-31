@@ -208,11 +208,14 @@ async def relay(token: str, route: str, request: Request):
             },
         )
         db.commit()
+        print(">>> Incrementing webhooks_received metric")
 
         webhooks_received.labels(
     provider=provider,
     route=route,
 ).inc()
+
+        print(">>> Metric incremented")
 
         #  Enqueue worker
         redis_client.lpush("webhook:ingress", str(event.id))

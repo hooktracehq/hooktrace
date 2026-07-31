@@ -100,7 +100,7 @@ def parse_timeseries(result):
 async def get_trend(
     promql: str,
     hours: int = 1,
-    step: str = "1m",
+    step: str = "30s",
 ):
     """
     Execute a Prometheus range query and return frontend-ready
@@ -261,8 +261,8 @@ async def delivery_trend():
         return await get_trend(
             """
             sum(
-                increase(
-                    hooktrace_events_delivered_total[1m]
+                rate(
+                    hooktrace_events_delivered_total[5m]
                 )
             )
             """
@@ -279,8 +279,6 @@ async def delivery_trend():
             status_code=500,
             detail=f"Unexpected error: {e}",
         )
-
-
 @router.get("/dashboard/failure-trend")
 async def failure_trend():
     try:
@@ -313,8 +311,8 @@ async def retry_trend():
         return await get_trend(
             """
             sum(
-                increase(
-                    hooktrace_events_retried_total[1m]
+                rate(
+                    hooktrace_events_retried_total[5m]
                 )
             )
             """
@@ -333,19 +331,17 @@ async def retry_trend():
         )
 
 
-
 @router.get("/dashboard/latency-trend")
 async def latency_trend():
     try:
         return await get_trend(
             """
-            increase(
-                hooktrace_delivery_latency_seconds_sum[1m]
-            )
-            /
-            increase(
-                hooktrace_delivery_latency_seconds_count[1m]
-            )
+           histogram_quantile(
+  0.50,
+  sum by(le)(
+    rate(hooktrace_delivery_latency_seconds_bucket[5m])
+  )
+)
             """
         )
 
@@ -360,7 +356,6 @@ async def latency_trend():
             status_code=500,
             detail=f"Unexpected error: {e}",
         )
-
 
 @router.get("/dashboard/stats")
 async def dashboard_stats():

@@ -35,7 +35,7 @@ export function ProviderDistribution({
         </h2>
 
         <p className="text-sm text-muted-foreground">
-          traffic source breakdown
+        Webhook traffic by provider
         </p>
       </div>
 
@@ -70,7 +70,20 @@ export function ProviderDistribution({
 
             </Pie>
 
-            <Tooltip />
+            <Tooltip
+  contentStyle={{
+    background: "#111827",
+    border: "1px solid #374151",
+    borderRadius: 12,
+    color: "#fff",
+  }}
+  labelStyle={{
+    color: "#fff",
+  }}
+  itemStyle={{
+    color: "#fff",
+  }}
+/>
 
           </PieChart>
 

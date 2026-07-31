@@ -35,9 +35,15 @@ export function MetricsCard({
         y: 0,
       }}
       className="
-        rounded-2xl border border-border
-        bg-surface-1 p-5
-      "
+rounded-2xl
+border border-border/60
+bg-surface-1
+p-6
+shadow-sm
+transition-all
+hover:border-primary/20
+hover:shadow-lg
+"
     >
 
       <div className="flex items-start justify-between">
@@ -48,9 +54,11 @@ export function MetricsCard({
             {label}
           </p>
 
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">
-            {value}
-          </h2>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-foreground">
+  {typeof value === "number"
+    ? value.toLocaleString()
+    : value}
+</h2>
 
           {change && (
             <p className="mt-2 text-xs text-muted-foreground">

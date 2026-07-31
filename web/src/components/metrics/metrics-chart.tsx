@@ -26,11 +26,11 @@ export function MetricsChart({
       <div className="mb-6">
 
         <h2 className="text-lg font-semibold">
-          Event Throughput
+        Webhook Throughput
         </h2>
 
         <p className="text-sm text-muted-foreground">
-          realtime webhook traffic
+        Events processed over time
         </p>
 
       </div>
@@ -82,7 +82,13 @@ export function MetricsChart({
               stroke="#737373"
             />
 
-            <Tooltip />
+<Tooltip
+  contentStyle={{
+    borderRadius: 12,
+    border: "1px solid rgb(38 38 38)",
+    background: "#09090b",
+  }}
+/>
 
             <Area
               type="monotone"
