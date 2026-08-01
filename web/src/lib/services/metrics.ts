@@ -9,6 +9,16 @@ export interface MetricsOverview {
   avg_latency: number
 }
 
+export interface RecentActivity {
+  id: number
+  provider: string
+  event_type: string
+  status: string
+  route: string
+  latency: number | null
+  created_at: string
+}
+
 export interface ProviderMetric {
   provider: string
   delivered: number
@@ -84,4 +94,16 @@ export const metricsService = {
       "/metrics/dashboard/stats"
     )
   },
+
+
+
+  async getRecentActivity() {
+    const data = await apiFetch<{
+      events: RecentActivity[]
+    }>("/metrics/dashboard/recent")
+  
+    return data.events
+  },
 }
+
+

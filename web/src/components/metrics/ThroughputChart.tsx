@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,24 +17,46 @@ import { ChartEmpty } from "@/components/metrics/ChartEmpty";
 type Props = {
   data: {
     time: string;
-    latency: number;
+    events: number;
   }[];
 };
 
-export function LatencyChart({
+export function ThroughputChart({
   data,
 }: Props) {
   return (
     <ChartCard
-      title="Delivery Latency"
-      description="Average webhook delivery latency"
+      title="Webhook Throughput"
+      description="Events processed over time"
     >
       {data.length === 0 ? (
         <ChartEmpty />
       ) : (
         <div className="h-[360px]">
           <ResponsiveContainer>
-            <LineChart data={data}>
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient
+                  id="throughputGradient"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="5%"
+                    stopColor="#f97316"
+                    stopOpacity={0.35}
+                  />
+
+                  <stop
+                    offset="95%"
+                    stopColor="#f97316"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+
               <CartesianGrid
                 strokeDasharray="2 4"
                 stroke="rgba(255,255,255,.05)"
@@ -54,9 +76,6 @@ export function LatencyChart({
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "#888" }}
-                tickFormatter={(v) =>
-                  `${Math.round(v * 1000)}ms`
-                }
               />
 
               <Tooltip
@@ -70,17 +89,17 @@ export function LatencyChart({
                 }
               />
 
-              <Line
+              <Area
                 type="monotone"
-                dataKey="latency"
-                stroke="#38bdf8"
+                dataKey="events"
+                stroke="#f97316"
                 strokeWidth={3}
-                dot={false}
+                fill="url(#throughputGradient)"
                 activeDot={{
                   r: 6,
                 }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}

@@ -1,19 +1,24 @@
-"use client"
+"use client";
 
 import {
-  PieChart,
-  Pie,
   Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
-} from "recharts"
+} from "recharts";
+
+import { ChartCard } from "@/components/metrics/ChartCard";
+import { ChartTooltip } from "@/components/metrics/ChartTooltip";
+import { ChartLegend } from "@/components/metrics/ChartLegend";
+import { ChartEmpty } from "@/components/metrics/ChartEmpty";
 
 type Props = {
   data: {
-    name: string
-    value: number
-  }[]
-}
+    name: string;
+    value: number;
+  }[];
+};
 
 const COLORS = [
   "#f97316",
@@ -21,75 +26,81 @@ const COLORS = [
   "#3b82f6",
   "#e11d48",
   "#a855f7",
-]
+];
 
 export function ProviderDistribution({
   data,
 }: Props) {
+  if (!data.length) {
+    return (
+      <ChartCard
+        title="Provider Distribution"
+        description="Webhook traffic by provider"
+      >
+        <ChartEmpty />
+      </ChartCard>
+    );
+  }
+
   return (
-    <div className="rounded-2xl border border-border bg-surface-1 p-5">
+    <ChartCard
+      title="Provider Distribution"
+      description="Webhook traffic by provider"
+    >
+      <div className="grid grid-cols-[1fr_180px] gap-6">
+        <div className="h-[320px]">
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie
+                data={data}
+                innerRadius={70}
+                outerRadius={110}
+                paddingAngle={3}
+                dataKey="value"
+                nameKey="name"
+              >
+                {data.map((_, index) => (
+                  <Cell
+                    key={index}
+                    fill={
+                      COLORS[
+                        index % COLORS.length
+                      ]
+                    }
+                  />
+                ))}
+              </Pie>
 
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold">
-          Provider Distribution
-        </h2>
+              <Tooltip
+                content={<ChartTooltip
+                    payload={[]}
+                    coordinate={undefined}
+                    active={false}
+                    accessibilityLayer={false}
+                    activeIndex={undefined}
+                  />
+                }
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
 
-        <p className="text-sm text-muted-foreground">
-        Webhook traffic by provider
-        </p>
+        <div className="flex items-center">
+          <ChartLegend
+            items={data.map(
+              (provider, index) => ({
+                label: provider.name,
+                value: provider.value,
+                color:
+                  COLORS[
+                    index %
+                      COLORS.length
+                  ],
+              })
+            )}
+          />
+        </div>
       </div>
-
-      <div className="h-[320px]">
-
-        <ResponsiveContainer
-          width="100%"
-          height="100%"
-        >
-
-          <PieChart>
-
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={70}
-              outerRadius={110}
-              paddingAngle={4}
-            >
-
-              {data.map((_, index) => (
-                <Cell
-                  key={index}
-                  fill={
-                    COLORS[
-                      index % COLORS.length
-                    ]
-                  }
-                />
-              ))}
-
-            </Pie>
-
-            <Tooltip
-  contentStyle={{
-    background: "#111827",
-    border: "1px solid #374151",
-    borderRadius: 12,
-    color: "#fff",
-  }}
-  labelStyle={{
-    color: "#fff",
-  }}
-  itemStyle={{
-    color: "#fff",
-  }}
-/>
-
-          </PieChart>
-
-        </ResponsiveContainer>
-
-      </div>
-    </div>
-  )
+    </ChartCard>
+  );
 }

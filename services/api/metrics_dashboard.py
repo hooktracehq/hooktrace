@@ -2,6 +2,9 @@ import asyncio
 import math
 from datetime import datetime, timedelta
 
+from sqlalchemy import text
+from .database import SessionLocal
+
 from fastapi import APIRouter, HTTPException
 
 from .prometheus_client import (
@@ -286,7 +289,7 @@ async def failure_trend():
             """
             sum(
                 increase(
-                    hooktrace_events_failed_total[1m]
+                    hooktrace_events_failed_total[5m]
                 )
             )
             """
@@ -337,7 +340,7 @@ async def latency_trend():
         return await get_trend(
             """
            histogram_quantile(
-  0.50,
+  0.95,
   sum by(le)(
     rate(hooktrace_delivery_latency_seconds_bucket[5m])
   )
@@ -433,3 +436,46 @@ clamp_min(
             status_code=500,
             detail=f"Unexpected error: {e}",
         )
+
+@router.get("/dashboard/recent")
+def recent_activity():
+    db = SessionLocal()
+
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT
+                    e.id,
+                    e.provider,
+                    e.event_type,
+                    e.status,
+                    e.delivery_duration,
+                    r.route,
+                    e.created_at
+                FROM webhook_events e
+                JOIN webhook_routes r
+                    ON r.id = e.route_id
+                ORDER BY e.created_at DESC
+                LIMIT 20
+                """
+            )
+        ).mappings().all()
+
+        return {
+            "events": [
+                {
+                    "id": row["id"],
+                    "provider": row["provider"],
+                    "event_type": row["event_type"],
+                    "status": row["status"],
+                    "route": row["route"],
+                    "latency": row["delivery_duration"] or 0,
+                    "created_at": row["created_at"],
+                }
+                for row in rows
+            ]
+        }
+
+    finally:
+        db.close()
