@@ -3,14 +3,8 @@ import json
 
 import redis
 
-from services.shared.redis_client import redis_client
-
 REDIS_URL = "redis://redis:6379"
 
-
-# ---------------------------------------
-# Global events subscriber
-# ---------------------------------------
 
 async def _subscriber_loop(manager):
     r = redis.Redis.from_url(
@@ -19,49 +13,51 @@ async def _subscriber_loop(manager):
     )
 
     pubsub = r.pubsub()
+
     pubsub.subscribe("events:updates")
 
-    print("[subscriber] Redis pubsub listening on events:updates")
+    print(
+        "[subscriber] listening on events:updates"
+    )
 
-    for message in pubsub.listen():
+    while True:
 
-        if message["type"] != "message":
-            continue
+        try:
+            message = pubsub.get_message(
+                ignore_subscribe_messages=True,
+                timeout=1,
+            )
 
-        data = json.loads(message["data"])
+            if message is not None:
 
-        await manager.broadcast_event(data)
+                print(
+                    "[subscriber] received:",
+                    message,
+                )
+
+                data = json.loads(
+                    message["data"]
+                )
+
+                await manager.broadcast_event(
+                    data
+                )
+
+            await asyncio.sleep(0.01)
+
+        except Exception as e:
+            print(
+                "[subscriber] ERROR:",
+                e,
+            )
+            await asyncio.sleep(1)
 
 
 def start_redis_subscriber(manager):
-    """
-    Runs the global events subscriber
-    in its own event loop.
-    """
-
     loop = asyncio.new_event_loop()
+
     asyncio.set_event_loop(loop)
 
     loop.run_until_complete(
         _subscriber_loop(manager)
-    )
-
-
-# ---------------------------------------
-# Tunnel subscriber
-# ---------------------------------------
-
-
-
-
-    """
-    Runs the tunnel subscriber
-    in its own event loop.
-    """
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(
-        _tunnel_loop(manager)
     )

@@ -8,18 +8,10 @@ import {
 } from "lucide-react"
 
 import { StreamJson } from "./stream-json"
-
-type StreamEvent = {
-  provider: string
-  route: string
-  status: string
-  latency: string
-  timestamp: string
-  eventType: string
-}
+import type { Event } from "@/types/event"
 
 type Props = {
-  event: StreamEvent | null
+  event: Event | null
 }
 
 export function StreamInspector({
@@ -80,13 +72,13 @@ export function StreamInspector({
         <MetaRow
           icon={FileJson}
           label="Event Type"
-          value={event.eventType}
+          value={event.event_type}
         />
 
         <MetaRow
           icon={Clock3}
           label="Latency"
-          value={event.latency}
+          value={`${event.latency_ms ?? 0} ms`}
         />
 
       </div>
@@ -103,18 +95,7 @@ export function StreamInspector({
         </div>
 
         <StreamJson
-          payload={{
-            id: "evt_12345",
-            route: event.route,
-            provider: event.provider,
-            type: event.eventType,
-            latency: event.latency,
-            metadata: {
-              retries: 1,
-              region: "eu-west",
-              worker: "worker-02",
-            },
-          }}
+          payload={event.payload ?? {}}
         />
 
       </div>

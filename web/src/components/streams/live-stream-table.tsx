@@ -1,20 +1,12 @@
 "use client"
 
 import { StreamRow } from "./stream-row"
-
-type Row = {
-  provider: string
-  route: string
-  status: string
-  latency: string
-  timestamp: string
-  eventType: string
-}
+import type { Event } from "@/types/event"
 
 type Props = {
-  rows: Row[]
-  selected: Row | null
-  onSelect: (row: Row) => void
+  rows: Event[]
+  selected: Event | null
+  onSelect: (row: Event) => void
 }
 
 export function LiveStreamTable({
@@ -51,7 +43,12 @@ export function LiveStreamTable({
       {rows.map((row, i) => (
         <StreamRow
           key={i}
-          {...row}
+          provider={row.provider}
+          route={row.route}
+          status={row.status}
+          latency={row.latency_ms ?? 0}
+          timestamp={new Date(row.created_at ?? new Date())}
+          eventType={row.event_type}
           selected={
             selected === row
           }

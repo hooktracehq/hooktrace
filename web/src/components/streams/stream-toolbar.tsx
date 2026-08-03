@@ -12,13 +12,14 @@ type Props = {
   setPaused: (v: boolean) => void
   query: string
   setQuery: (v: string) => void
+  connectionStatus: "connecting" | "connected" | "disconnected"
 }
-
 export function StreamToolbar({
   paused,
   setPaused,
   query,
   setQuery,
+  connectionStatus,
 }: Props) {
   return (
     <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -96,20 +97,24 @@ export function StreamToolbar({
         </button>
 
         <div
-          className="
-            flex items-center gap-2
-            rounded-xl border border-emerald-500/20
-            bg-emerald-500/10
-            px-3 py-2
-            text-sm text-emerald-400
-          "
-        >
+  className={`
+    flex items-center gap-2
+    rounded-xl px-3 py-2 text-sm border
+    ${
+      connectionStatus === "connected"
+        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+        : connectionStatus === "connecting"
+        ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
+        : "border-rose-500/20 bg-rose-500/10 text-rose-400"
+    }
+  `}
+>
+  <Wifi className="h-4 w-4" />
 
-          <Wifi className="h-4 w-4" />
-
-          Connected
-
-        </div>
+  {connectionStatus === "connected" && "Connected"}
+  {connectionStatus === "connecting" && "Connecting"}
+  {connectionStatus === "disconnected" && "Disconnected"}
+</div>
 
       </div>
 

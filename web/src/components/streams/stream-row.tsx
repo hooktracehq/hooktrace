@@ -8,8 +8,8 @@ type Props = {
   provider: string
   route: string
   status: string
-  latency: string
-  timestamp: string
+  latency: number
+  timestamp: Date
   eventType: string
   selected?: boolean
   onClick?: () => void
@@ -114,7 +114,7 @@ export function StreamRow({
       <div
         className={cn(
           "font-medium",
-          latencyColor(latency)
+          latencyColor(`${latency ?? 0} ms`)
         )}
       >
         {latency}
@@ -122,7 +122,7 @@ export function StreamRow({
 
       {/* Time */}
       <div className="text-muted-foreground">
-        {timestamp}
+        {timestamp.toISOString()}
       </div>
 
     </motion.button>

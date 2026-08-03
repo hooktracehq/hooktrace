@@ -39,6 +39,42 @@ MAX_RETRIES = 5
 # =========================
 # REALTIME UPDATES
 # =========================
+# def publish_update(
+#     event_id,
+#     status,
+#     attempt=0,
+#     user_id=None,
+#     provider=None,
+#     route=None,
+#     token=None,
+#     created_at=None,
+# ):
+#     try:
+#         payload = {
+#             "id": event_id,
+#             "status": status,
+#             "attempt_count": attempt or 0,
+#             "user_id": str(user_id) if user_id else None,
+#             "provider": provider,
+#             "route": route,
+#             "token": token,
+#             "created_at": created_at.isoformat() if created_at else None,
+#         }
+
+#         subscribers = redis_client.publish(
+#             "events:updates",
+#             json.dumps(payload),
+#         )
+
+#         print(
+#             f"[publish_update] Event {event_id} -> {status} "
+#             f"(subscribers={subscribers})"
+#         )
+
+#     except Exception as e:
+#         print(f"[publish_update] ERROR: {e}")
+
+
 def publish_update(
     event_id,
     status,
@@ -48,17 +84,35 @@ def publish_update(
     route=None,
     token=None,
     created_at=None,
+
+    # NEW
+    event_type=None,
+    latency_ms=None,
+    payload_size=None,
+    last_error=None,
 ):
     try:
         payload = {
             "id": event_id,
             "status": status,
             "attempt_count": attempt or 0,
+
             "user_id": str(user_id) if user_id else None,
             "provider": provider,
             "route": route,
             "token": token,
-            "created_at": created_at.isoformat() if created_at else None,
+
+            "created_at": (
+                created_at.isoformat()
+                if created_at
+                else None
+            ),
+
+            # New fields
+            "event_type": event_type,
+            "latency_ms": latency_ms,
+            "payload_size": payload_size,
+            "last_error": last_error,
         }
 
         subscribers = redis_client.publish(
@@ -67,13 +121,13 @@ def publish_update(
         )
 
         print(
-            f"[publish_update] Event {event_id} -> {status} "
+            f"[publish_update] "
+            f"Event {event_id} -> {status} "
             f"(subscribers={subscribers})"
         )
 
     except Exception as e:
         print(f"[publish_update] ERROR: {e}")
-
 # =========================
 # BATCH PROCESSING
 # =========================
@@ -149,6 +203,13 @@ def deliver_event(event_id: int):
         # Track the current attempt count that will be sent to realtime clients
         current_attempt = row.get("attempt_count") or 0
         payload = row["payload"]
+        payload_size = 0
+        try:
+            payload_size = len(
+                json.dumps(payload).encode("utf-8")
+            )
+        except Exception:
+            pass
 
         if isinstance(payload, str):
             try:
@@ -174,6 +235,8 @@ def deliver_event(event_id: int):
             route=row["route"],
             token=row["token"],
             created_at=row["created_at"],
+            event_type=row["event_type"],
+            payload_size=payload_size,
         )
         print("2. publish_update done")
         # =========================
@@ -223,6 +286,9 @@ def deliver_event(event_id: int):
                             "payload": payload,
                             "route": row["route"],
                             "event_id": event_id,
+                            "provider":row["provider"],
+                            "event_type":row["event_type"],
+                            "created_at":row["created_at"],
                         }
                     ),
                 )
@@ -251,6 +317,13 @@ def deliver_event(event_id: int):
                     route=row["route"],
                     token=row["token"],
                     created_at=row["created_at"],
+
+                    event_type=row["event_type"],
+                    latency_ms=round(
+                        (time.perf_counter() - start) * 1000,
+                        2,
+                    ),
+                    payload_size=payload_size,
                 )
 
                 
@@ -401,6 +474,14 @@ def deliver_event(event_id: int):
             route=row["route"],
             token=row["token"],
             created_at=row["created_at"],
+
+            event_type=row["event_type"],
+            latency_ms=round(
+                (time.perf_counter() - start) * 1000,
+                2,
+            ),
+            payload_size=payload_size,
+            last_error=row["last_error"],
         )
 
     

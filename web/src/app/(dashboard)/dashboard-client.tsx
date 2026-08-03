@@ -1,2030 +1,15 @@
+"use client";
 
-// "use client"
+import { useState } from "react";
+import { motion } from "framer-motion";
 
-// import { useEffect, useState } from "react"
-// import Link from "next/link"
-// import {
-//   type LucideIcon,
-//   Activity,
-//   CheckCircle2,
-//   XCircle,
-//   RotateCcw,
-//   Clock,
-//   Zap,
-//   TrendingUp,
-//   AlertCircle,
-//   ArrowRight,
-//   Circle,
-// } from "lucide-react"
-// import { motion, type Variants } from "framer-motion"
-// import {
-//   AreaChart,
-//   Area,
-//   XAxis,
-//   YAxis,
-//   Tooltip,
-//   ResponsiveContainer,
-//   CartesianGrid,
-// } from "recharts"
-// import { ThemeToggle } from "@/components/theme-toggle"
-// import { UserNav } from "@/components/user-nav"
-
-
-// /* ------------------ Motion ------------------ */
-
-// const container: Variants = {
-//   hidden: { opacity: 0 },
-//   show: {
-//     opacity: 1,
-//     transition: { staggerChildren: 0.04 },
-//   },
-// }
-
-// const fadeUp: Variants = {
-//   hidden: { opacity: 0, y: 12 },
-//   show: {
-//     opacity: 1,
-//     y: 0,
-//     transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] },
-//   },
-// }
-
-// /* ------------------ Types ------------------ */
-
-// type Endpoint = {
-//   id: number
-//   token: string
-//   route: string
-//   mode: "dev" | "prod"
-// }
-
-
-// type MetricsData = {
-//   incoming: [number, string][]
-//   delivered: [number, string][]
-//   failed: [number, string][]
-//   latency: [number, string][]
-//   timestamp: number
-// }
-
-
-// type WebhookEvent = {
-//   id: number
-//   provider: string
-//   status: "pending" | "delivered" | "failed"
-//   created_at: string
-// }
-
-// /* ------------------ Component ------------------ */
-
-// export default function DashboardClient({
-//   stats,
-//   user,
-//   successSeries = [],
-//   failureSeries = [],
-//   recentEvents = [],
-//   endpoints = [],
-// }: {
-//   stats: { label: string; value: number }[]
-//   user: {
-//     email: string
-//     avatar_url?: string
-//     name?: string
-//   }
-//   successSeries?: [number, string][]
-//   failureSeries?: [number, string][]
-//   recentEvents?:WebhookEvent[]
-// endpoints?: Endpoint[]
-// })   {
-//   const [metrics, setMetrics] = useState<MetricsData | null>(null)
-//   const [isLive, setIsLive] = useState(true)
-
-//   useEffect(() => {
-//     if (!isLive) return
-
-//     const fetchMetrics = async () => {
-//       try {
-//         const response = await fetch("/api/metrics")
-//         if (response.ok) {
-//           const data = await response.json()
-//           setMetrics(data)
-//         }
-//       } catch (error) {
-//         console.error("Metrics fetch error:", error)
-//       }
-//     }
-
-//     fetchMetrics()
-//     const interval = setInterval(fetchMetrics, 5000)
-//     return () => clearInterval(interval)
-//   }, [isLive])
-
-//   const formatTime = (ts?: number) =>
-//     ts ? new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""
-
-//   const transform = (series?: [number, string][]) =>
-//     (series || []).map(([ts, val]) => ({
-//       time: formatTime(ts),
-//       value: Number(val) || 0,
-//     }))
-
-//   // Chart data
-//   const maxLen = Math.max(successSeries.length, failureSeries.length)
-//   const chartData = Array.from({ length: maxLen })
-//     .map((_, i) => {
-//       const s = successSeries[i]
-//       const f = failureSeries[i]
-//       const ts = s?.[0] ?? f?.[0]
-//       if (!ts) return null
-//       return {
-//         time: formatTime(ts),
-//         success: Number(s?.[1] ?? 0),
-//         failed: Number(f?.[1] ?? 0),
-//       }
-//     })
-//     .filter(Boolean)
-
-//   // Calculate real-time metrics
-//   const latestIncoming = metrics ? transform(metrics.incoming).slice(-1)[0]?.value || 0 : 0
-//   const latestLatency = metrics ? transform(metrics.latency).slice(-1)[0]?.value || 0 : 0
-  
-//   const deliveryResults = metrics
-//     ? metrics.delivered.map((point, i) => ({
-//         success: Number(point[1]) || 0,
-//         failed: Number(metrics.failed[i]?.[1]) || 0,
-//       }))
-//     : []
-
-//   const latestDelivered = deliveryResults.slice(-1)[0]?.success || 0
-//   const latestFailed = deliveryResults.slice(-1)[0]?.failed || 0
-//   const total = latestDelivered + latestFailed
-//   const successRate = total > 0 ? ((latestDelivered / total) * 100) : 100
-//   const isHealthy = successRate >= 95 && latestLatency < 2
-
-//   return (
-//     <div className="min-h-screen bg-background">
-//       <motion.div
-//         variants={container}
-//         initial="hidden"
-//         animate="show"
-//         className="mx-auto max-w-7xl px-6 py-8 space-y-8"
-//       >
-//         {/* Header */}
-//         <motion.header variants={fadeUp}>
-//   <div className="flex items-center justify-between">
-
-//     {/* LEFT */}
-//     <div className="flex items-center gap-3">
-//       <div className="p-2 bg-primary/10 rounded-lg">
-//         <Activity className="w-6 h-6 text-primary" />
-//       </div>
-
-//       <div>
-//         <h1 className="text-3xl font-bold">Dashboard</h1>
-//         <p className="text-sm text-muted-foreground">
-//           Monitor your webhook performance
-//         </p>
-//       </div>
-//     </div>
-
-//     {/* RIGHT */}
-//     <div className="flex items-center gap-3">
-//       <ThemeToggle />
-
-//       <button
-//         onClick={() => setIsLive(!isLive)}
-//         className={`
-//           flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition
-//           ${isLive
-//             ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-//             : "bg-muted hover:bg-muted/80"
-//           }
-//         `}
-//       >
-//         <Circle className={`w-2 h-2 fill-current ${isLive ? "animate-pulse" : ""}`} />
-//         {isLive ? "Live" : "Paused"}
-//       </button>
-
-//       <UserNav user={user} />
-//     </div>
-//   </div>
-// </motion.header>
-
-//         {/* Stats Grid */}
-//         <motion.section
-//           variants={container}
-//           className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-//         >
-//           <StatCard
-//             icon={Activity}
-//             label="Total Events"
-//             value={stats[0].value}
-//             iconColor="text-blue-600 dark:text-blue-400"
-//           />
-//           <StatCard
-//             icon={CheckCircle2}
-//             label="Delivered"
-//             value={stats[1].value}
-//             iconColor="text-emerald-600 dark:text-emerald-400"
-//           />
-//           <StatCard
-//             icon={XCircle}
-//             label="Failed"
-//             value={stats[2].value}
-//             iconColor="text-rose-600 dark:text-rose-400"
-//           />
-//           <StatCard
-//             icon={RotateCcw}
-//             label="Retries"
-//             value={stats[3].value}
-//             iconColor="text-amber-600 dark:text-amber-400"
-//           />
-//         </motion.section>
-
-//         {/* Live Metrics */}
-//         {metrics && (
-//           <motion.section
-//             variants={container}
-//             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-//           >
-//             <LiveMetric
-//               icon={Zap}
-//               label="Throughput"
-//               value={latestIncoming.toFixed(1)}
-//               unit="req/s"
-//               iconColor="text-violet-600 dark:text-violet-400"
-//             />
-//             <LiveMetric
-//               icon={TrendingUp}
-//               label="Success Rate"
-//               value={successRate.toFixed(1)}
-//               unit="%"
-//               iconColor="text-emerald-600 dark:text-emerald-400"
-//             />
-//             <LiveMetric
-//               icon={Clock}
-//               label="Latency"
-//               value={(latestLatency * 1000).toFixed(0)}
-//               unit="ms"
-//               iconColor="text-blue-600 dark:text-blue-400"
-//             />
-//             <LiveMetric
-//               icon={AlertCircle}
-//               label="Failed Events"
-//               value={latestFailed.toFixed(0)}
-//               unit="events"
-//               iconColor="text-rose-600 dark:text-rose-400"
-//             />
-//           </motion.section>
-//         )}
-
-//         {/* Main Chart */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border border-border bg-card p-6">
-//             <div className="flex items-center justify-between mb-6">
-//               <div>
-//                 <h2 className="text-lg font-semibold mb-1">Delivery Performance</h2>
-//                 <p className="text-sm text-muted-foreground">Success vs failure over time</p>
-//               </div>
-//               <div className="flex items-center gap-4 text-sm">
-//                 <div className="flex items-center gap-2">
-//                   <div className="w-3 h-3 rounded-full bg-emerald-500" />
-//                   <span className="text-muted-foreground">Success</span>
-//                 </div>
-//                 <div className="flex items-center gap-2">
-//                   <div className="w-3 h-3 rounded-full bg-rose-500" />
-//                   <span className="text-muted-foreground">Failed</span>
-//                 </div>
-//               </div>
-//             </div>
-
-//             <ResponsiveContainer width="100%" height={320}>
-//               <AreaChart data={chartData}>
-//                 <defs>
-//                   <linearGradient id="successGrad" x1="0" y1="0" x2="0" y2="1">
-//                     <stop offset="5%" stopColor="rgb(34, 197, 94)" stopOpacity={0.3} />
-//                     <stop offset="95%" stopColor="rgb(34, 197, 94)" stopOpacity={0} />
-//                   </linearGradient>
-//                   <linearGradient id="failedGrad" x1="0" y1="0" x2="0" y2="1">
-//                     <stop offset="5%" stopColor="rgb(239, 68, 68)" stopOpacity={0.3} />
-//                     <stop offset="95%" stopColor="rgb(239, 68, 68)" stopOpacity={0} />
-//                   </linearGradient>
-//                 </defs>
-//                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-//                 <XAxis
-//                   dataKey="time"
-//                   tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-//                   axisLine={{ stroke: "hsl(var(--border))" }}
-//                 />
-//                 <YAxis
-//                   tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-//                   axisLine={{ stroke: "hsl(var(--border))" }}
-//                 />
-//                 <Tooltip
-//                   contentStyle={{
-//                     backgroundColor: "hsl(var(--card))",
-//                     border: "1px solid hsl(var(--border))",
-//                     borderRadius: "8px",
-//                     fontSize: "12px",
-//                   }}
-//                 />
-//                 <Area
-//                   type="monotone"
-//                   dataKey="success"
-//                   stroke="rgb(34, 197, 94)"
-//                   strokeWidth={2}
-//                   fill="url(#successGrad)"
-//                 />
-//                 <Area
-//                   type="monotone"
-//                   dataKey="failed"
-//                   stroke="rgb(239, 68, 68)"
-//                   strokeWidth={2}
-//                   fill="url(#failedGrad)"
-//                 />
-//               </AreaChart>
-//             </ResponsiveContainer>
-//           </div>
-//         </motion.section>
-
-//         {/* Quick Actions */}
-//         <motion.section variants={fadeUp}>
-//           <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card">
-//             <div>
-//               <p className="font-medium mb-1">Need more details?</p>
-//               <p className="text-sm text-muted-foreground">
-//                 View individual events, check failures, or see advanced metrics
-//               </p>
-//             </div>
-//             <div className="flex gap-2">
-//               <Link
-//                 href="/events"
-//                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors"
-//               >
-//                 All Events
-//               </Link>
-//               <Link
-//                 href="/events?status=failed"
-//                 className="px-4 py-2 rounded-lg border border-border hover:bg-accent text-sm font-medium transition-colors"
-//               >
-//                 Failed Events
-//               </Link>
-//               <Link
-//                 href="/metrics"
-//                 className="px-4 py-2 rounded-lg border border-border hover:bg-accent text-sm font-medium transition-colors"
-//               >
-//                 Advanced Metrics
-//               </Link>
-//             </div>
-//           </div>
-//         </motion.section>
-//           {/* Recent Events */}
-
-// <motion.section variants={fadeUp} className="grid gap-6 lg:grid-cols-2">
-//   <div className="rounded-xl border border-border bg-card p-6">
-//     <div className="flex items-center justify-between mb-5">
-//       <h2 className="text-lg font-semibold">Recent Events</h2>
-
-//       <Link
-//         href="/events"
-//         className="text-sm text-primary hover:underline"
-//       >
-//         View all
-//       </Link>
-//     </div>
-
-//     <div className="space-y-3">
-//       {recentEvents?.map((ev: WebhookEvent) => (
-//         <Link
-//           key={ev.id}
-//           href={`/events/${ev.id}`}
-//           className="flex items-center justify-between p-3 rounded-md hover:bg-accent transition"
-//         >
-//           <div className="flex items-center gap-3">
-
-//             {ev.status === "delivered" && (
-//               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-//             )}
-
-//             {ev.status === "failed" && (
-//               <XCircle className="w-4 h-4 text-rose-500" />
-//             )}
-
-//             {ev.status === "pending" && (
-//               <Clock className="w-4 h-4 text-amber-500" />
-//             )}
-
-//             <div>
-//               <p className="text-sm font-medium">
-//                 Event #{ev.id}
-//               </p>
-
-//               <p className="text-xs text-muted-foreground">
-//                 {ev.provider}
-//               </p>
-//             </div>
-//           </div>
-
-//           <span className="text-xs text-muted-foreground">
-//             {new Date(ev.created_at).toLocaleTimeString()}
-//           </span>
-//         </Link>
-//       ))}
-//     </div>
-//   </div>
-
-//   {/* Endpoints */}
-
-//   <div className="rounded-xl border border-border bg-card p-6">
-//   <div className="flex items-center justify-between mb-5">
-//     <h2 className="text-lg font-semibold">Endpoints</h2>
-
-//     <Link
-//       href="/endpoints"
-//       className="text-sm text-primary hover:underline"
-//     >
-//       Manage
-//     </Link>
-//   </div>
-
-//   <div className="space-y-3">
-//     {endpoints.length === 0 && (
-//       <p className="text-sm text-muted-foreground">
-//         No endpoints created yet
-//       </p>
-//     )}
-
-//     {endpoints.slice(0,5).map((ep) => (
-//       <div
-//         key={ep.id}
-//         className="flex items-center justify-between p-3 rounded-md border border-border"
-//       >
-//         <div>
-//           <p className="text-sm font-medium">
-//             {ep.route}
-//           </p>
-
-//           <p className="text-xs text-muted-foreground">
-//             /r/{ep.token}/{ep.route}
-//           </p>
-//         </div>
-
-//         <span className="text-xs px-2 py-1 rounded bg-muted">
-//           {ep.mode}
-//         </span>
-//       </div>
-//     ))}
-//   </div>
-// </div>
-// </motion.section>
-//       </motion.div>
-
-
-
-    
-//     </div>
-//   )
-// }
-
-// /* ------------------ Components ------------------ */
-
-// function StatCard({
-//   icon: Icon,
-//   label,
-//   value,
-//   iconColor,
-// }: {
-//   icon: LucideIcon
-//   label: string
-//   value: number
-//   iconColor: string
-// }) {
-//   return (
-//     <motion.div
-//       variants={fadeUp}
-//       className="rounded-lg border border-border bg-card p-5 hover:shadow-sm transition-shadow"
-//     >
-//       <div className="flex items-center justify-between mb-3">
-//         <Icon className={`w-5 h-5 ${iconColor}`} />
-//       </div>
-//       <p className="text-2xl font-bold mb-1 tabular-nums">
-//         {Number.isFinite(value) ? value.toLocaleString() : 0}
-//       </p>
-//       <p className="text-sm text-muted-foreground">{label}</p>
-//     </motion.div>
-//   )
-// }
-
-// function LiveMetric({
-//   icon: Icon,
-//   label,
-//   value,
-//   unit,
-//   iconColor,
-// }: {
-//   icon: LucideIcon
-//   label: string
-//   value: string
-//   unit: string
-//   iconColor: string
-// }) {
-//   return (
-//     <motion.div
-//       variants={fadeUp}
-//       className="rounded-lg border border-border bg-card/50 p-4"
-//     >
-//       <div className="flex items-center gap-2 mb-2">
-//         <Icon className={`w-4 h-4 ${iconColor}`} />
-//         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-//           {label}
-//         </p>
-//       </div>
-//       <div className="flex items-baseline gap-1.5">
-//         <span className="text-xl font-bold tabular-nums">{value}</span>
-//         <span className="text-sm text-muted-foreground">{unit}</span>
-//       </div>
-//     </motion.div>
-//   )
-// }
-
-
-
-
-
-
-
-
-
-
-
-// "use client"
-
-// import { useEffect, useState } from "react"
-// import Link from "next/link"
-// import {
-//   type LucideIcon,
-//   Activity,
-//   CheckCircle2,
-//   XCircle,
-//   RotateCcw,
-//   AlertCircle,
-//   ArrowRight,
-//   Circle,
-// } from "lucide-react"
-
-// import { motion, type Variants } from "framer-motion"
-// import {
-//   AreaChart,
-//   Area,
-//   XAxis,
-//   YAxis,
-//   Tooltip,
-//   ResponsiveContainer,
-//   CartesianGrid,
-// } from "recharts"
-
-// import { ThemeToggle } from "@/components/theme-toggle"
-// import { UserNav } from "@/components/user-nav"
-// import { StatusBadge } from "@/components/ui/status-badge"
-
-// import type {
-//   DashboardProps,
-//   MetricsData,
-// } from "@/types/dashboard"
-
-// /* ---------------- Motion ---------------- */
-
-// const container: Variants = {
-//   hidden: { opacity: 0 },
-//   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-// }
-
-// const fadeUp: Variants = {
-//   hidden: { opacity: 0, y: 12 },
-//   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-// }
-
-// /* ---------------- Component ---------------- */
-
-// export default function DashboardClient({
-//   stats,
-//   user,
-//   successSeries = [],
-//   failureSeries = [],
-//   recentEvents = [],
-// }: DashboardProps) {
-//   const [metrics, setMetrics] = useState<MetricsData | null>(null)
-//   const [isLive, setIsLive] = useState(true)
-
-//   /* ---------- Live metrics ---------- */
-
-//   useEffect(() => {
-//     if (!isLive) return
-
-//     const fetchMetrics = async () => {
-//       try {
-//         const res = await fetch("/api/metrics")
-//         if (res.ok) setMetrics(await res.json())
-//       } catch {}
-//     }
-
-//     fetchMetrics()
-//     const interval = setInterval(fetchMetrics, 5000)
-//     return () => clearInterval(interval)
-//   }, [isLive])
-
-//   const formatTime = (ts?: number) =>
-//     ts
-//       ? new Date(ts * 1000).toLocaleTimeString([], {
-//           hour: "2-digit",
-//           minute: "2-digit",
-//         })
-//       : ""
-
-//   const latestLatency =
-//     Number(metrics?.latency?.slice(-1)[0]?.[1] || 0)
-
-//   const latestDelivered =
-//     Number(metrics?.delivered?.slice(-1)[0]?.[1] || 0)
-
-//   const latestFailed =
-//     Number(metrics?.failed?.slice(-1)[0]?.[1] || 0)
-
-//   const total = latestDelivered + latestFailed
-//   const successRate = total > 0 ? (latestDelivered / total) * 100 : 100
-//   const isHealthy = successRate >= 95 && latestLatency < 2
-
-//   /* ---------- Chart ---------- */
-
-//   const chartData = successSeries.map((s, i) => ({
-//     time: formatTime(s[0]),
-//     success: Number(s[1]),
-//     failed: Number(failureSeries[i]?.[1] || 0),
-//   }))
-
-//   const icons = [Activity, CheckCircle2, XCircle, RotateCcw]
-
-//   return (
-//     <div className="min-h-screen bg-background">
-//       <motion.div
-//         variants={container}
-//         initial="hidden"
-//         animate="show"
-//         className="mx-auto max-w-7xl px-6 py-8 space-y-6"
-//       >
-
-//         {/* HEADER */}
-//         <motion.header variants={fadeUp}>
-//           <div className="flex items-center justify-between">
-
-//             <div className="flex items-center gap-3">
-//               <div className="p-2 bg-primary/10 rounded-lg">
-//                 <Activity className="w-6 h-6 text-primary" />
-//               </div>
-
-//               <div>
-//                 <h1 className="text-3xl font-bold">Dashboard</h1>
-//                 <p className="text-sm text-muted-foreground">
-//                   Monitor your webhook performance
-//                 </p>
-//               </div>
-//             </div>
-
-//             <div className="flex items-center gap-3">
-//               <ThemeToggle />
-
-//               <button
-//                 onClick={() => setIsLive(!isLive)}
-//                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${
-//                   isLive ? "bg-emerald-500 text-white" : "bg-muted"
-//                 }`}
-//               >
-//                 <Circle className={`w-2 h-2 ${isLive ? "animate-pulse" : ""}`} />
-//                 {isLive ? "Live" : "Paused"}
-//               </button>
-
-//               <UserNav user={user} />
-//             </div>
-//           </div>
-//         </motion.header>
-
-//         {/* STATUS */}
-//         <motion.div variants={fadeUp}>
-//           <div className={`p-4 rounded-xl border flex justify-between ${
-//             isHealthy ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
-//           }`}>
-//             <div className="flex items-center gap-3">
-//               {isHealthy
-//                 ? <CheckCircle2 className="text-emerald-600" />
-//                 : <AlertCircle className="text-amber-600" />
-//               }
-
-//               <div>
-//                 <p className="font-semibold text-sm">
-//                   {isHealthy ? "All systems operational" : "Performance degraded"}
-//                 </p>
-//                 <p className="text-xs text-muted-foreground">
-//                   {successRate.toFixed(1)}% • {(latestLatency * 1000).toFixed(0)}ms
-//                 </p>
-//               </div>
-//             </div>
-
-//             <Link href="/events" className="flex items-center gap-1 text-sm">
-//               View Events <ArrowRight className="w-4 h-4" />
-//             </Link>
-//           </div>
-//         </motion.div>
-
-//         {/* STATS */}
-//         <motion.section variants={container} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-//           {stats.map((s, i) => {
-//             const Icon = icons[i] ?? Activity
-//             return (
-//               <StatCard key={i} icon={Icon} label={s.label} value={s.value} />
-//             )
-//           })}
-//         </motion.section>
-
-//         {/* CHART */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border bg-card p-6 shadow-sm">
-//             <ResponsiveContainer width="100%" height={300}>
-//               <AreaChart data={chartData}>
-//                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-//                 <XAxis dataKey="time" />
-//                 <YAxis />
-//                 <Tooltip />
-//                 <Area dataKey="success" stroke="#22c55e" fillOpacity={0.2} />
-//                 <Area dataKey="failed" stroke="#ef4444" fillOpacity={0.2} />
-//               </AreaChart>
-//             </ResponsiveContainer>
-//           </div>
-//         </motion.section>
-
-//         {/* RECENT EVENTS */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border bg-card p-6">
-//             <div className="space-y-2">
-//               {recentEvents.map((ev) => (
-//                 <Link
-//                   key={ev.id}
-//                   href={`/events/${ev.id}`}
-//                   className="flex items-center justify-between p-3 rounded-md hover:bg-muted/40"
-//                 >
-//                   <div className="flex items-center gap-3">
-//                     <StatusBadge status={ev.status} />
-//                     <div>
-//                       <p className="text-sm font-medium">Event #{ev.id}</p>
-//                       <p className="text-xs text-muted-foreground">
-//                         {ev.provider || "Unknown"}   {/* ✅ FIX */}
-//                       </p>
-//                     </div>
-//                   </div>
-
-//                   <span className="text-xs text-muted-foreground">
-//                     {new Date(ev.created_at).toLocaleTimeString()}
-//                   </span>
-//                 </Link>
-//               ))}
-//             </div>
-//           </div>
-//         </motion.section>
-
-//       </motion.div>
-//     </div>
-//   )
-// }
-
-// /* ---------------- Card ---------------- */
-
-// function StatCard({
-//   icon: Icon,
-//   label,
-//   value,
-// }: {
-//   icon: LucideIcon
-//   label: string
-//   value: number
-// }) {
-//   return (
-//     <motion.div
-//       variants={fadeUp}
-//       className="rounded-xl border bg-card p-5 hover:bg-muted/40 transition"
-//     >
-//       <Icon className="w-5 h-5 mb-2 text-primary" />
-//       <p className="text-xl font-bold">{value.toLocaleString()}</p>
-//       <p className="text-sm text-muted-foreground">{label}</p>
-//     </motion.div>
-//   )
-// }
-
-
-
-
-
-
-
-
-
-// "use client"
-
-// import { useEffect, useState } from "react"
-// import Link from "next/link"
-// import {
-//   type LucideIcon,
-//   Activity,
-//   CheckCircle2,
-//   XCircle,
-//   RotateCcw,
-//   AlertCircle,
-//   ArrowRight,
-//   Circle,
-// } from "lucide-react"
-
-// import { motion, type Variants } from "framer-motion"
-// import {
-//   AreaChart,
-//   Area,
-//   XAxis,
-//   YAxis,
-//   Tooltip,
-//   ResponsiveContainer,
-//   CartesianGrid,
-// } from "recharts"
-
-// import { ThemeToggle } from "@/components/theme-toggle"
-// import { UserNav } from "@/components/user-nav"
-// import { StatusBadge } from "@/components/ui/status-badge"
-
-// import type { DashboardProps, MetricsData } from "@/types/dashboard"
-
-// /* ---------------- Motion ---------------- */
-
-// const container: Variants = {
-//   hidden: { opacity: 0 },
-//   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-// }
-
-// const fadeUp: Variants = {
-//   hidden: { opacity: 0, y: 12 },
-//   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-// }
-
-// /* ---------------- Helpers ---------------- */
-
-// function safeNumber(val: unknown): number {
-//   const num = Number(val)
-//   return Number.isFinite(num) ? num : 0
-// }
-
-// /* ---------------- Component ---------------- */
-
-// async function getDLQCount() {
-//   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events?status=dlq`)
-//   const data = await res.json()
-//   return data.items?.length || 0
-// }  
-// export default function DashboardClient({
-//   stats,
-//   user,
-//   successSeries = [],
-//   failureSeries = [],
-//   recentEvents = [],
-// }: DashboardProps) {
-//   const [metrics, setMetrics] = useState<MetricsData | null>(null)
-//   const [isLive, setIsLive] = useState(true)
-
-//   /* ---------- Live metrics ---------- */
-
-//   useEffect(() => {
-//     if (!isLive) return
-
-//     const fetchMetrics = async () => {
-//       try {
-//         const res = await fetch("/api/metrics")
-//         if (res.ok) {
-//           const data = await res.json()
-//           setMetrics(data)
-//         }
-//       } catch (err) {
-//         console.error("Metrics error:", err)
-//       }
-//     }
-
-//     fetchMetrics()
-//     const interval = setInterval(fetchMetrics, 5000)
-//     return () => clearInterval(interval)
-//   }, [isLive])
-
-//   const formatTime = (ts?: number) =>
-//     ts
-//       ? new Date(ts * 1000).toLocaleTimeString([], {
-//           hour: "2-digit",
-//           minute: "2-digit",
-//         })
-//       : ""
-
-//   /* ---------- Safe Metrics ---------- */
-
-//   const rawLatency = metrics?.latency?.slice(-1)[0]?.[1]
-//   const rawDelivered = metrics?.delivered?.slice(-1)[0]?.[1]
-//   const rawFailed = metrics?.failed?.slice(-1)[0]?.[1]
-
-//   const latestLatency = safeNumber(rawLatency)
-//   const latestDelivered = safeNumber(rawDelivered)
-//   const latestFailed = safeNumber(rawFailed)
-
-//   const total = latestDelivered + latestFailed
-
-//   const successRate =
-//     total > 0 ? (latestDelivered / total) * 100 : 100
-
-//   const isHealthy =
-//     total === 0
-//       ? true
-//       : successRate >= 95 && latestLatency < 2
-
-//   /* ---------- Chart ---------- */
-
-//   const chartData = (successSeries || []).map((s, i) => ({
-//     time: formatTime(s[0]),
-//     success: safeNumber(s[1]),
-//     failed: safeNumber(failureSeries[i]?.[1]),
-//   }))
-
-//   const icons = [Activity, CheckCircle2, XCircle, RotateCcw]
-
-//   return (
-//     <div className="min-h-screen bg-background">
-//       <motion.div
-//         variants={container}
-//         initial="hidden"
-//         animate="show"
-//         className="mx-auto max-w-7xl px-6 py-8 space-y-6"
-//       >
-
-//         {/* HEADER */}
-//         <motion.header variants={fadeUp}>
-//           <div className="flex items-center justify-between">
-
-//             <div className="flex items-center gap-3">
-//               <div className="p-2 bg-primary/10 rounded-lg">
-//                 <Activity className="w-6 h-6 text-primary" />
-//               </div>
-
-//               <div>
-//                 <h1 className="text-3xl font-bold">Dashboard</h1>
-//                 <p className="text-sm text-muted-foreground">
-//                   Monitor your webhook performance
-//                 </p>
-//               </div>
-//             </div>
-
-//             <div className="flex items-center gap-3">
-//               <ThemeToggle />
-
-//               <button
-//                 onClick={() => setIsLive(!isLive)}
-//                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${
-//                   isLive ? "bg-emerald-500 text-white" : "bg-muted"
-//                 }`}
-//               >
-//                 <Circle className={`w-2 h-2 ${isLive ? "animate-pulse" : ""}`} />
-//                 {isLive ? "Live" : "Paused"}
-//               </button>
-
-//               <UserNav user={user} />
-//             </div>
-//           </div>
-//         </motion.header>
-
-//         {/* STATUS */}
-//         <motion.div variants={fadeUp}>
-//           <div className={`p-4 rounded-xl border flex justify-between ${
-//             isHealthy
-//               ? "bg-emerald-50 border-emerald-200"
-//               : "bg-amber-50 border-amber-200"
-//           }`}>
-//             <div className="flex items-center gap-3">
-//               {isHealthy
-//                 ? <CheckCircle2 className="text-emerald-600" />
-//                 : <AlertCircle className="text-amber-600" />
-//               }
-
-//               <div>
-//                 <p className="font-semibold text-sm">
-//                   {isHealthy
-//                     ? "All systems operational"
-//                     : "Performance degraded"}
-//                 </p>
-
-//                 <p className="text-xs text-muted-foreground">
-//                   {successRate.toFixed(1)}% • {(latestLatency * 1000).toFixed(0)}ms
-//                 </p>
-//               </div>
-//             </div>
-
-//             <Link href="/events" className="flex items-center gap-1 text-sm">
-//               View Events <ArrowRight className="w-4 h-4" />
-//             </Link>
-//           </div>
-//         </motion.div>
-
-//         {/* STATS */}
-//         <motion.section variants={container} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-//           {stats.map((s, i) => {
-//             const Icon = icons[i] ?? Activity
-//             return (
-//               <StatCard key={i} icon={Icon} label={s.label} value={s.value} />
-//             )
-//           })}
-//         </motion.section>
-
-//         {/* CHART */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border bg-card p-6 shadow-sm">
-
-//             {chartData.length === 0 ? (
-//               <div className="text-sm text-muted-foreground text-center py-10">
-//                 No data yet — send a webhook to see activity
-//               </div>
-//             ) : (
-//               <ResponsiveContainer width="100%" height={300}>
-//                 <AreaChart data={chartData}>
-//                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-//                   <XAxis dataKey="time" />
-//                   <YAxis />
-//                   <Tooltip />
-//                   <Area dataKey="success" stroke="#22c55e" fillOpacity={0.2} />
-//                   <Area dataKey="failed" stroke="#ef4444" fillOpacity={0.2} />
-//                 </AreaChart>
-//               </ResponsiveContainer>
-//             )}
-
-//           </div>
-//         </motion.section>
-
-//         {/* RECENT EVENTS */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border bg-card p-6">
-
-//             {recentEvents.length === 0 ? (
-//               <p className="text-sm text-muted-foreground text-center py-6">
-//                 No recent events yet
-//               </p>
-//             ) : (
-//               <div className="space-y-2">
-//                 {recentEvents.map((ev) => (
-//                   <Link
-//                     key={ev.id}
-//                     href={`/events/${ev.id}`}
-//                     className="flex items-center justify-between p-3 rounded-md hover:bg-muted/40"
-//                   >
-//                     <div className="flex items-center gap-3">
-//                       <StatusBadge status={ev.status} />
-//                       <div>
-//                         <p className="text-sm font-medium">Event #{ev.id}</p>
-//                         <p className="text-xs text-muted-foreground">
-//                           {ev.provider || "Unknown"}
-//                         </p>
-//                       </div>
-//                     </div>
-
-//                     <span className="text-xs text-muted-foreground">
-//                       {new Date(ev.created_at).toLocaleTimeString()}
-//                     </span>
-//                   </Link>
-//                 ))}
-//               </div>
-//             )}
-
-//           </div>
-//         </motion.section>
-
-//       </motion.div>
-//     </div>
-//   )
-// }
-
-// /* ---------------- Card ---------------- */
-
-// function StatCard({
-//   icon: Icon,
-//   label,
-//   value,
-// }: {
-//   icon: LucideIcon
-//   label: string
-//   value: number
-// }) {
-//   return (
-//     <motion.div
-//       variants={fadeUp}
-//       className="rounded-xl border bg-card p-5 hover:bg-muted/40 transition"
-//     >
-//       <Icon className="w-5 h-5 mb-2 text-primary" />
-//       <p className="text-xl font-bold">
-//         {Number.isFinite(value) ? value.toLocaleString() : 0}
-//       </p>
-//       <p className="text-sm text-muted-foreground">{label}</p>
-//     </motion.div>
-//   )
-// }
-
-
-
-
-
-// "use client"
-
-// import { useEffect, useState } from "react"
-// import Link from "next/link"
-// import {
-//   type LucideIcon,
-//   Activity,
-//   CheckCircle2,
-//   XCircle,
-//   RotateCcw,
-//   AlertCircle,
-//   ArrowRight,
-//   Circle,
-// } from "lucide-react"
-
-// import { motion, type Variants } from "framer-motion"
-// import {
-//   AreaChart,
-//   Area,
-//   XAxis,
-//   YAxis,
-//   Tooltip,
-//   ResponsiveContainer,
-//   CartesianGrid,
-// } from "recharts"
-
-// import { ThemeToggle } from "@/components/theme-toggle"
-// import { UserNav } from "@/components/user-nav"
-// import { StatusBadge } from "@/components/ui/status-badge"
-
-// import type { DashboardProps, MetricsData, Endpoint } from "@/types/dashboard"
-
-// /* ---------------- Motion ---------------- */
-
-// const container: Variants = {
-//   hidden: { opacity: 0 },
-//   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-// }
-
-// const fadeUp: Variants = {
-//   hidden: { opacity: 0, y: 12 },
-//   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-// }
-
-// /* ---------------- Helpers ---------------- */
-
-// function safeNumber(val: unknown): number {
-//   const num = Number(val)
-//   return Number.isFinite(num) ? num : 0
-// }
-
-// /* ---------------- Component ---------------- */
-
-// export default function DashboardClient({
-//   stats,
-//   user,
-//   successSeries = [],
-//   failureSeries = [],
-//   recentEvents = [],
-//   endpoints = [],
-//   dlqCount = 0,
-// }: DashboardProps & {
-//   dlqCount?: number
-//   endpoints?: Endpoint[]
-// }) {
-//   const [metrics, setMetrics] = useState<MetricsData | null>(null)
-//   const [isLive, setIsLive] = useState(true)
-
-//   /* ---------- Live Metrics ---------- */
-
-//   useEffect(() => {
-//     if (!isLive) return
-
-//     const fetchMetrics = async () => {
-//       try {
-//         const res = await fetch("/api/metrics")
-//         if (res.ok) {
-//           const data = await res.json()
-//           setMetrics(data)
-//         }
-//       } catch (err) {
-//         console.error("Metrics error:", err)
-//       }
-//     }
-
-//     fetchMetrics()
-//     const interval = setInterval(fetchMetrics, 5000)
-//     return () => clearInterval(interval)
-//   }, [isLive])
-
-//   const formatTime = (ts?: number) =>
-//     ts
-//       ? new Date(ts * 1000).toLocaleTimeString([], {
-//           hour: "2-digit",
-//           minute: "2-digit",
-//         })
-//       : ""
-
-//   /* ---------- Safe Metrics ---------- */
-
-//   const rawLatency = metrics?.latency?.slice(-1)[0]?.[1]
-//   const rawDelivered = metrics?.delivered?.slice(-1)[0]?.[1]
-//   const rawFailed = metrics?.failed?.slice(-1)[0]?.[1]
-
-//   const latestLatency = safeNumber(rawLatency)
-//   const latestDelivered = safeNumber(rawDelivered)
-//   const latestFailed = safeNumber(rawFailed)
-
-//   const total = latestDelivered + latestFailed
-
-//   const successRate =
-//     total > 0 ? (latestDelivered / total) * 100 : 100
-
-//   const isHealthy =
-//     total === 0
-//       ? true
-//       : successRate >= 95 && latestLatency < 2
-
-//   /* ---------- Chart ---------- */
-
-//   const chartData = (successSeries || []).map((s, i) => ({
-//     time: formatTime(s[0]),
-//     success: safeNumber(s[1]),
-//     failed: safeNumber(failureSeries[i]?.[1]),
-//   }))
-
-//   const icons = [Activity, CheckCircle2, XCircle, RotateCcw]
-
-//   return (
-//     <div className="min-h-screen bg-background">
-//       <motion.div
-//         variants={container}
-//         initial="hidden"
-//         animate="show"
-//         className="mx-auto max-w-7xl px-6 py-8 space-y-6"
-//       >
-
-//         {/* HEADER */}
-//         <motion.header variants={fadeUp}>
-//           <div className="flex items-center justify-between">
-
-//             <div className="flex items-center gap-3">
-//               <div className="p-2 bg-primary/10 rounded-lg">
-//                 <Activity className="w-6 h-6 text-primary" />
-//               </div>
-
-//               <div>
-//                 <h1 className="text-3xl font-bold">Dashboard</h1>
-//                 <p className="text-sm text-muted-foreground">
-//                   Monitor your webhook performance
-//                 </p>
-//               </div>
-//             </div>
-
-//             <div className="flex items-center gap-3">
-//               <ThemeToggle />
-
-//               <button
-//                 onClick={() => setIsLive(!isLive)}
-//                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${
-//                   isLive ? "bg-emerald-500 text-white" : "bg-muted"
-//                 }`}
-//               >
-//                 <Circle className={`w-2 h-2 ${isLive ? "animate-pulse" : ""}`} />
-//                 {isLive ? "Live" : "Paused"}
-//               </button>
-
-//               <UserNav user={user} />
-//             </div>
-//           </div>
-//         </motion.header>
-
-//         {/* STATUS */}
-//         <motion.div variants={fadeUp}>
-//           <div className={`p-4 rounded-xl border flex justify-between ${
-//             isHealthy
-//               ? "bg-emerald-50 border-emerald-200"
-//               : "bg-amber-50 border-amber-200"
-//           }`}>
-//             <div className="flex items-center gap-3">
-//               {isHealthy
-//                 ? <CheckCircle2 className="text-emerald-600" />
-//                 : <AlertCircle className="text-amber-600" />
-//               }
-
-//               <div>
-//                 <p className="font-semibold text-sm">
-//                   {isHealthy
-//                     ? "All systems operational"
-//                     : "Performance degraded"}
-//                 </p>
-
-//                 <p className="text-xs text-muted-foreground">
-//                   {successRate.toFixed(1)}% • {(latestLatency * 1000).toFixed(0)}ms
-//                 </p>
-//               </div>
-//             </div>
-
-//             <Link href="/events" className="flex items-center gap-1 text-sm">
-//               View Events <ArrowRight className="w-4 h-4" />
-//             </Link>
-//           </div>
-//         </motion.div>
-
-//         {/* DLQ ALERT */}
-//         {dlqCount > 0 && (
-//           <motion.div variants={fadeUp}>
-//             <div className="p-4 rounded-xl border border-red-200 bg-red-50 flex justify-between items-center">
-//               <div>
-//                 <p className="font-semibold text-red-700 text-sm">
-//                   {dlqCount} events need attention
-//                 </p>
-//                 <p className="text-xs text-red-600">
-//                   Failed after max retries
-//                 </p>
-//               </div>
-
-//               <Link
-//                 href="/dlq"
-//                 className="text-sm font-medium text-red-600 hover:underline"
-//               >
-//                 View DLQ →
-//               </Link>
-//             </div>
-//           </motion.div>
-//         )}
-
-//         {/* STATS */}
-//         <motion.section variants={container} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-//           {stats.map((s, i) => {
-//             const Icon = icons[i] ?? Activity
-//             return (
-//               <StatCard key={i} icon={Icon} label={s.label} value={s.value} />
-//             )
-//           })}
-//         </motion.section>
-
-//         {/* CHART */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border bg-card p-6 shadow-sm">
-
-//             {chartData.length === 0 ? (
-//               <div className="text-sm text-muted-foreground text-center py-10">
-//                 No data yet — send a webhook to see activity
-//               </div>
-//             ) : (
-//               <ResponsiveContainer width="100%" height={300}>
-//                 <AreaChart data={chartData}>
-//                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-//                   <XAxis dataKey="time" />
-//                   <YAxis />
-//                   <Tooltip />
-//                   <Area dataKey="success" stroke="#22c55e" fillOpacity={0.2} />
-//                   <Area dataKey="failed" stroke="#ef4444" fillOpacity={0.2} />
-//                 </AreaChart>
-//               </ResponsiveContainer>
-//             )}
-
-//           </div>
-//         </motion.section>
-
-//         {/* RECENT EVENTS */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border bg-card p-6">
-//             <h2 className="font-semibold mb-4">Recent Events</h2>
-
-//             {recentEvents.length === 0 ? (
-//               <p className="text-sm text-muted-foreground text-center py-6">
-//                 No recent events yet
-//               </p>
-//             ) : (
-//               <div className="space-y-2">
-//                 {recentEvents.map((ev) => (
-//                   <Link
-//                     key={ev.id}
-//                     href={`/events/${ev.id}`}
-//                     className="flex items-center justify-between p-3 rounded-md hover:bg-muted/40"
-//                   >
-//                     <div className="flex items-center gap-3">
-//                       <StatusBadge status={ev.status} />
-//                       <div>
-//                         <p className="text-sm font-medium">Event #{ev.id}</p>
-//                         <p className="text-xs text-muted-foreground">
-//                           {ev.provider || "Unknown"}
-//                         </p>
-//                       </div>
-//                     </div>
-
-//                     <span className="text-xs text-muted-foreground">
-//                       {new Date(ev.created_at).toLocaleTimeString()}
-//                     </span>
-//                   </Link>
-//                 ))}
-//               </div>
-//             )}
-//           </div>
-//         </motion.section>
-
-//         {/* ENDPOINTS */}
-//         <motion.section variants={fadeUp}>
-//           <div className="rounded-xl border bg-card p-6">
-//             <div className="flex justify-between mb-4">
-//               <h2 className="font-semibold">Endpoints</h2>
-//               <Link href="/endpoints" className="text-sm text-primary">
-//                 Manage
-//               </Link>
-//             </div>
-
-//             {endpoints.length === 0 ? (
-//               <p className="text-sm text-muted-foreground">
-//                 No endpoints yet
-//               </p>
-//             ) : (
-//               <div className="space-y-2">
-//                 {endpoints.slice(0, 5).map((ep) => (
-//                   <div
-//                     key={ep.id}
-//                     className="flex justify-between p-2 border rounded-md"
-//                   >
-//                     <div>
-//                       <p className="text-sm font-medium">{ep.route}</p>
-//                       <p className="text-xs text-muted-foreground">
-//                         /r/{ep.token}/{ep.route}
-//                       </p>
-//                     </div>
-
-//                     <span className="text-xs px-2 py-1 bg-muted rounded">
-//                       {ep.mode}
-//                     </span>
-//                   </div>
-//                 ))}
-//               </div>
-//             )}
-//           </div>
-//         </motion.section>
-
-//       </motion.div>
-//     </div>
-//   )
-// }
-
-// /* ---------------- Card ---------------- */
-
-// function StatCard({
-//   icon: Icon,
-//   label,
-//   value,
-// }: {
-//   icon: LucideIcon
-//   label: string
-//   value: number
-// }) {
-//   return (
-//     <motion.div
-//       variants={fadeUp}
-//       className="rounded-xl border bg-card p-5 hover:bg-muted/40 transition"
-//     >
-//       <Icon className="w-5 h-5 mb-2 text-primary" />
-//       <p className="text-xl font-bold">
-//         {Number.isFinite(value) ? value.toLocaleString() : 0}
-//       </p>
-//       <p className="text-sm text-muted-foreground">{label}</p>
-//     </motion.div>
-//   )
-// }
-
-
-
-
-
-// "use client"
-
-// import Link from "next/link"
-// import { motion } from "framer-motion"
-// import {
-//   CheckCircle2,
-//   XCircle,
-//   AlertTriangle,
-// } from "lucide-react"
-
-// type Stat = {
-//   label: string
-//   value: number
-// }
-
-// type Event = {
-//   id: number
-//   provider?: string
-//   status: "delivered" | "failed" | "pending"
-//   created_at: string
-//   route?: string
-// }
-
-// type Endpoint = {
-//   id: string
-//   route: string
-//   mode: string
-// }
-
-// export default function DashboardClient({
-//   stats,
-//   successSeries,
-//   failureSeries,
-//   recentEvents,
-//   endpoints,
-//   dlqCount,
-// }: {
-//   stats: Stat[]
-//   successSeries: [number, string][]
-//   failureSeries: [number, string][]
-//   recentEvents: Event[]
-//   endpoints: Endpoint[]
-//   dlqCount: number
-// }) {
-//   /* ---------------- Derived ---------------- */
-
-//   const incoming = stats.find(s => s.label === "Total Events")?.value || 0
-//   const delivered = stats.find(s => s.label === "Delivered")?.value || 0
-//   const failed = stats.find(s => s.label === "Failed")?.value || 0
-
-//   const successRate =
-//     incoming > 0 ? (delivered / incoming) * 100 : 100
-
-//   const isHealthy = successRate > 95 && dlqCount === 0
-
-//   /* ---------------- UI ---------------- */
-
-//   return (
-//     <div className="min-h-screen bg-background">
-//       <div className="mx-auto max-w-7xl px-6 py-10 space-y-8">
-
-//         {/* ---------------- STATUS BAR ---------------- */}
-//         <div
-//           className={`rounded-xl p-4 flex items-center justify-between border
-//             ${isHealthy
-//               ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-//               : "bg-red-50 border-red-200 text-red-700"}
-//           `}
-//         >
-//           <div className="flex items-center gap-2 text-sm font-medium">
-//             {isHealthy ? (
-//               <>
-//                 <CheckCircle2 className="w-4 h-4" />
-//                 All systems operational
-//               </>
-//             ) : (
-//               <>
-//                 <AlertTriangle className="w-4 h-4" />
-//                 Issues detected
-//               </>
-//             )}
-//           </div>
-
-//           <div className="text-sm">
-//             {successRate.toFixed(1)}% success
-//           </div>
-//         </div>
-
-//         {/* ---------------- METRICS ---------------- */}
-//         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-//           {[
-//             { label: "Incoming", value: incoming },
-//             { label: "Delivered", value: delivered },
-//             { label: "Failed", value: failed },
-//             {
-//               label: "Retries",
-//               value: stats.find(s => s.label === "Retries")?.value || 0,
-//             },
-//           ].map((stat) => (
-//             <div
-//               key={stat.label}
-//               className="rounded-lg border bg-card p-5"
-//             >
-//               <p className="text-sm text-muted-foreground mb-1">
-//                 {stat.label}
-//               </p>
-//               <p className="text-2xl font-bold">
-//                 {stat.value}
-//               </p>
-//             </div>
-//           ))}
-//         </div>
-
-//         {/* ---------------- GRAPH ---------------- */}
-//         <div className="rounded-xl border bg-card p-6">
-//           <div className="flex justify-between mb-4">
-//             <h2 className="font-semibold">Activity</h2>
-
-//             <div className="flex gap-3 text-xs text-muted-foreground">
-//               <span className="text-emerald-600">● Success</span>
-//               <span className="text-red-500">● Failed</span>
-//             </div>
-//           </div>
-
-//           <div className="h-[320px] flex items-center justify-center text-muted-foreground text-sm">
-//             {/* Replace with your chart component */}
-//             Chart goes here
-//           </div>
-//         </div>
-
-//         {/* ---------------- ALERTS ---------------- */}
-//         {(dlqCount > 0 || failed > 0) && (
-//           <div className="rounded-xl border bg-card p-6 space-y-2">
-//             <h2 className="font-semibold">Alerts</h2>
-
-//             {dlqCount > 0 && (
-//               <p className="text-sm text-red-500">
-//                 ⚠️ {dlqCount} events in DLQ
-//               </p>
-//             )}
-
-//             {failed > 0 && (
-//               <p className="text-sm text-red-500">
-//                 ⚠️ {failed} failed deliveries
-//               </p>
-//             )}
-//           </div>
-//         )}
-
-//         {/* ---------------- LOWER GRID ---------------- */}
-//         <div className="grid md:grid-cols-2 gap-6">
-
-//           {/* RECENT EVENTS */}
-//           <div className="rounded-xl border bg-card p-6">
-//             <div className="flex justify-between mb-4">
-//               <h2 className="font-semibold">Recent Events</h2>
-//               <Link href="/events" className="text-sm text-primary">
-//                 View all
-//               </Link>
-//             </div>
-
-//             <div className="space-y-3">
-//               {recentEvents.length === 0 && (
-//                 <p className="text-sm text-muted-foreground">
-//                   No events yet
-//                 </p>
-//               )}
-
-//               {recentEvents.map((event) => (
-//                 <div
-//                   key={event.id}
-//                   className="flex justify-between text-sm"
-//                 >
-//                   <div className="flex items-center gap-2">
-//                     {event.status === "delivered" && (
-//                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-//                     )}
-//                     {event.status === "failed" && (
-//                       <XCircle className="w-4 h-4 text-red-500" />
-//                     )}
-
-//                     <span>
-//                       #{event.id} {event.provider || ""}
-//                     </span>
-//                   </div>
-
-//                   <span className="text-muted-foreground text-xs">
-//                     {new Date(event.created_at).toLocaleTimeString()}
-//                   </span>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-
-//           {/* ENDPOINTS */}
-//           <div className="rounded-xl border bg-card p-6">
-//             <div className="flex justify-between mb-4">
-//               <h2 className="font-semibold">Endpoints</h2>
-//               <Link href="/endpoints" className="text-sm text-primary">
-//                 Manage
-//               </Link>
-//             </div>
-
-//             <div className="space-y-2 text-sm">
-//               {endpoints.length === 0 && (
-//                 <p className="text-muted-foreground">
-//                   No endpoints yet
-//                 </p>
-//               )}
-
-//               {endpoints.slice(0, 5).map((ep) => (
-//                 <div
-//                   key={ep.id}
-//                   className="flex justify-between"
-//                 >
-//                   <span>{ep.route}</span>
-//                   <span className="text-muted-foreground">
-//                     {ep.mode}
-//                   </span>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-
-//         </div>
-//       </div>
-//     </div>
-//   )
-// }
-
-
-
-
-// "use client"
-
-// import Link from "next/link"
-// import { motion } from "framer-motion"
-// import { useWebhookStream } from "@/hooks/useWebhookStream"
-// import {
-//   CheckCircle2,
-//   XCircle,
-//   AlertTriangle,
-// } from "lucide-react"
-// import {
-//   LineChart,
-//   Line,
-//   XAxis,
-//   Tooltip,
-//   ResponsiveContainer,
-// } from "recharts"
-
-// /* ---------------- TYPES ---------------- */
-
-// type Stat = { label: string; value: number }
-
-// type Event = {
-//   id: number
-//   provider?: string
-//   status: "delivered" | "failed" | "pending"
-//   created_at: string
-// }
-
-// type Endpoint = {
-//   id: string
-//   route: string
-//   mode: string
-// }
-
-// type Integration = {
-//   id: string
-//   name: string
-//   provider: string
-// }
-
-// /* ---------------- COMPONENT ---------------- */
-
-// export default function DashboardClient({
-//   stats,
-//   successSeries,
-//   failureSeries,
-//   recentEvents,
-//   endpoints,
-//   integrations,
-//   dlqCount,
-//   latency,
-//   lastFailure,
-// }: {
-//   stats: Stat[]
-//   successSeries: [number, string][]
-//   failureSeries: [number, string][]
-//   recentEvents: Event[]
-//   endpoints: Endpoint[]
-//   integrations: Integration[]
-//   dlqCount: number
-//   latency: number
-//   lastFailure?: Event | null
-// }) {
-//   const incoming = stats.find(s => s.label === "Total Events")?.value || 0
-//   const delivered = stats.find(s => s.label === "Delivered")?.value || 0
-//   const failed = stats.find(s => s.label === "Failed")?.value || 0
-//   const retries = stats.find(s => s.label === "Retries")?.value || 0
-
-//   const liveEvents = useWebhookStream("/ws/events")
-
-//   const mergedEvents = [...liveEvents, ...(recentEvents || [])]
-//     .filter((e, i, arr) => arr.findIndex(x => x.id === e.id) === i)
-//     .slice(0, 10)
-
-//   const incomingLive = incoming + liveEvents.length
-//   const deliveredLive = delivered + liveEvents.filter(e => e.status === "delivered").length
-//   const failedLive = failed + liveEvents.filter(e => e.status === "failed").length
-
-//   const successRate =
-//     incomingLive > 0 ? (deliveredLive / incomingLive) * 100 : 100
-
-//   const isHealthy = successRate > 95 && dlqCount === 0
-
-//   const chartData = successSeries.map((s, i) => ({
-//     time: new Date(s[0] * 1000).toLocaleTimeString(),
-//     success: Number(s[1]),
-//     failure: Number(failureSeries[i]?.[1] || 0),
-//   }))
-
-//   return (
-//     <div className="min-h-screen relative overflow-hidden bg-background">
-
-//       {/* 🔥 Gradient Background */}
-//       <div className="absolute inset-0 -z-10">
-//         <div className="absolute top-[-200px] left-[-200px] w-[500px] h-[500px] bg-purple-500/20 blur-[120px] rounded-full" />
-//         <div className="absolute bottom-[-200px] right-[-200px] w-[500px] h-[500px] bg-blue-500/20 blur-[120px] rounded-full" />
-//       </div>
-
-//       <div className="mx-auto max-w-7xl px-6 py-10 space-y-8">
-
-//         {/* ================= STATUS ================= */}
-//         <motion.div
-//           initial={{ opacity: 0, y: -10 }}
-//           animate={{ opacity: 1, y: 0 }}
-//           className={`
-//             rounded-xl p-4 flex justify-between items-center border backdrop-blur-xl
-//             ${isHealthy
-//               ? "bg-emerald-500/10 border-emerald-400/30 text-emerald-400"
-//               : "bg-red-500/10 border-red-400/30 text-red-400"}
-//           `}
-//         >
-//           <div className="flex items-center gap-2 text-sm font-medium">
-//             {isHealthy ? (
-//               <>
-//                 <CheckCircle2 className="w-4 h-4" />
-//                 All systems operational
-//               </>
-//             ) : (
-//               <>
-//                 <AlertTriangle className="w-4 h-4" />
-//                 Issues detected
-//               </>
-//             )}
-//           </div>
-
-//           <div className="flex items-center gap-6 text-sm">
-//             <span>{successRate.toFixed(1)}%</span>
-//             <span>{latency}ms</span>
-
-//             {/* LIVE glow */}
-//             <div className="flex items-center gap-2">
-//               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-//               Live
-//             </div>
-//           </div>
-//         </motion.div>
-
-//         {/* ================= METRICS ================= */}
-//         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-
-//           {[
-//             { label: "Incoming", value: incomingLive },
-//             { label: "Delivered", value: deliveredLive },
-//             { label: "Failed", value: failedLive },
-//             { label: "Retries", value: retries },
-//             { label: "Endpoints", value: endpoints?.length || 0 },
-//             { label: "Integrations", value: integrations?.length || 0 },
-//           ].map((stat) => (
-//             <motion.div
-//               key={stat.label}
-//               whileHover={{ scale: 1.03 }}
-//               className="rounded-xl border bg-white/5 dark:bg-white/5 backdrop-blur-xl p-4 shadow-sm"
-//             >
-//               <p className="text-xs text-muted-foreground">
-//                 {stat.label}
-//               </p>
-//               <p className="text-xl font-bold mt-1">
-//                 {stat.value}
-//               </p>
-//             </motion.div>
-//           ))}
-//         </div>
-
-//         {/* ================= CHART ================= */}
-//         <div className="rounded-xl border bg-white/5 backdrop-blur-xl p-6">
-//           <h2 className="font-semibold mb-4">Activity</h2>
-
-//           <div className="h-[320px]">
-//             <ResponsiveContainer width="100%" height="100%">
-//               <LineChart data={chartData}>
-//                 <XAxis dataKey="time" />
-//                 <Tooltip />
-
-//                 <Line
-//                   type="monotone"
-//                   dataKey="success"
-//                   stroke="#22c55e"
-//                   strokeWidth={2}
-//                 />
-
-//                 <Line
-//                   type="monotone"
-//                   dataKey="failure"
-//                   stroke="#ef4444"
-//                   strokeWidth={2}
-//                 />
-//               </LineChart>
-//             </ResponsiveContainer>
-//           </div>
-//         </div>
-
-//         {/* ================= ALERTS ================= */}
-//         {(dlqCount > 0 || failedLive > 0) && (
-//           <div className="rounded-xl border bg-red-500/10 border-red-400/30 backdrop-blur-xl p-6">
-//             <h2 className="font-semibold mb-2 text-red-400">Alerts</h2>
-
-//             {dlqCount > 0 && (
-//               <p className="text-sm">⚠ {dlqCount} events in DLQ</p>
-//             )}
-
-//             {failedLive > 0 && (
-//               <p className="text-sm">⚠ Failures detected</p>
-//             )}
-//           </div>
-//         )}
-
-//         {/* ================= LOWER ================= */}
-//         <div className="grid md:grid-cols-2 gap-6">
-
-//           {/* EVENTS */}
-//           <div className="rounded-xl border bg-white/5 backdrop-blur-xl p-6">
-//             <div className="flex justify-between mb-4">
-//               <h2 className="font-semibold">Recent Events</h2>
-//               <Link href="/events" className="text-sm text-primary">
-//                 View all
-//               </Link>
-//             </div>
-
-//             <div className="space-y-3">
-//               {mergedEvents.map((event) => (
-//                 <div key={event.id} className="flex justify-between text-sm">
-//                   <div className="flex items-center gap-2">
-//                     {event.status === "delivered" && (
-//                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-//                     )}
-//                     {event.status === "failed" && (
-//                       <XCircle className="w-4 h-4 text-red-400" />
-//                     )}
-//                     <span>#{event.id} {event.provider}</span>
-//                   </div>
-
-//                   <span className="text-xs text-muted-foreground">
-//                     {new Date(event.created_at).toLocaleTimeString()}
-//                   </span>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-
-//           {/* ENDPOINTS */}
-//           <div className="rounded-xl border bg-white/5 backdrop-blur-xl p-6">
-//             <div className="flex justify-between mb-4">
-//               <h2 className="font-semibold">Endpoints</h2>
-//               <Link href="/endpoints" className="text-sm text-primary">
-//                 Manage
-//               </Link>
-//             </div>
-
-//             <div className="space-y-2 text-sm">
-//               {(endpoints || []).slice(0, 6).map((ep) => (
-//                 <div key={ep.id} className="flex justify-between">
-//                   <span>{ep.route}</span>
-//                   <span className="text-muted-foreground">
-//                     {ep.mode}
-//                   </span>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-
-//         </div>
-
-//       </div>
-//     </div>
-//   )
-// }
-
-
-
-
-
-
-
-
-"use client"
-
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { useWebhookStream } from "@/hooks/useWebhookStream"
-import { useState } from "react"
+import { useWebhookStream } from "@/hooks/streams/useWebhookStream";
 
 import {
   CheckCircle2,
   AlertTriangle,
   Activity,
-} from "lucide-react"
+} from "lucide-react";
 
 import {
   LineChart,
@@ -2032,41 +17,62 @@ import {
   XAxis,
   Tooltip,
   ResponsiveContainer,
-} from "recharts"
+} from "recharts";
 
-import { ThemeToggle } from "@/components/theme-toggle"
-import { UserNav } from "@/components/user-nav"
+import { ThemeToggle } from "@/components/theme-toggle";
+import { UserNav } from "@/components/user-nav";
 
-/* ---------------- TYPES ---------------- */
-
-type Stat = { label: string; value: number }
+type Stat = {
+  label: string;
+  value: number;
+};
 
 type Event = {
-  id: number
-  provider?: string
-  status: "delivered" | "failed" | "pending"
-  created_at: string
-}
+  id: number;
+  provider?: string;
+  route?: string;
+  token?: string;
+
+  status:
+    | "pending"
+    | "processing"
+    | "retrying"
+    | "delivered"
+    | "failed"
+    | "dlq";
+
+  event_type?: string;
+
+  latency_ms?: number;
+
+  payload?: Record<string, unknown>;
+
+  headers?: Record<string, unknown>;
+
+  created_at: string;
+
+  attempt_count?: number;
+
+  last_error?: string | null;
+};
 
 type Endpoint = {
-  id: string
-  route: string
-  mode: string
-}
+  id: string;
+  route: string;
+  mode: string;
+};
 
 type Integration = {
-  id: string
-  name: string
-  provider: string
-}
+  id: string;
+  name: string;
+  provider: string;
+};
 
 type User = {
-  email: string
-  name?: string
-  avatar_url?: string
-}
-
-/* ---------------- COMPONENT ---------------- */
+  email: string;
+  name?: string;
+  avatar_url?: string;
+};
 
 export default function DashboardClient({
   stats,
@@ -2079,136 +85,166 @@ export default function DashboardClient({
   latency,
   user,
 }: {
-  stats: Stat[]
-  successSeries: [number, string][]
-  failureSeries: [number, string][]
-  recentEvents: Event[]
-  endpoints: Endpoint[]
-  integrations: Integration[]
-  dlqCount: number
-  latency: number
-  user: User
+  stats: Stat[];
+  successSeries: [number, string][];
+  failureSeries: [number, string][];
+  recentEvents: Event[];
+  endpoints: Endpoint[];
+  integrations: Integration[];
+  dlqCount: number;
+  latency: number;
+  user: User;
 }) {
-  const [isLive, setIsLive] = useState(true)
+  const [isLive, setIsLive] = useState(true);
 
-  const liveEvents = useWebhookStream("/ws/events")
+  const {
+    events: liveEvents,
+    status,
+    connected,
+    buffered,
+  } = useWebhookStream("/ws/events");
 
   /* ---------------- Derived ---------------- */
 
-  const incoming = stats.find(s => s.label === "Total Events")?.value || 0
-  const delivered = stats.find(s => s.label === "Delivered")?.value || 0
-  const failed = stats.find(s => s.label === "Failed")?.value || 0
-  const retries = stats.find(s => s.label === "Retries")?.value || 0
+  const incoming =
+    stats.find((s) => s.label === "Total Events")?.value ?? 0;
+
+  const delivered =
+    stats.find((s) => s.label === "Delivered")?.value ?? 0;
+
+  const failed =
+    stats.find((s) => s.label === "Failed")?.value ?? 0;
+
+  const retries =
+    stats.find((s) => s.label === "Retries")?.value ?? 0;
 
   const mergedEvents = [
     ...(isLive ? liveEvents : []),
-    ...(recentEvents || []),
+    ...(recentEvents ?? []),
   ]
-    .filter((e, i, arr) => arr.findIndex(x => x.id === e.id) === i)
-    .slice(0, 10)
+    .filter(
+      (event, index, array) =>
+        array.findIndex((e) => e.id === event.id) === index
+    )
+    .slice(0, 10);
 
-    const incomingLive = incoming + (isLive ? liveEvents.length : 0)
+  const incomingLive =
+    incoming + (isLive ? liveEvents.length : 0);
 
-    const deliveredLive =
-      delivered +
-      (isLive ? liveEvents.filter(e => e.status === "delivered").length : 0)
-    
-    const failedLive =
-      failed +
-      (isLive ? liveEvents.filter(e => e.status === "failed").length : 0)
+  const deliveredLive =
+    delivered +
+    (isLive
+      ? liveEvents.filter(
+          (e) => e.status === "delivered"
+        ).length
+      : 0);
+
+  const failedLive =
+    failed +
+    (isLive
+      ? liveEvents.filter(
+          (e) => e.status === "failed"
+        ).length
+      : 0);
 
   const successRate =
-    incomingLive > 0 ? (deliveredLive / incomingLive) * 100 : 100
+    incomingLive > 0
+      ? (deliveredLive / incomingLive) * 100
+      : 100;
 
-  const isHealthy = successRate > 95 && dlqCount === 0
+  const isHealthy =
+    successRate > 95 && dlqCount === 0;
 
   const chartData = successSeries.map((s, i) => ({
     time: new Date(s[0] * 1000).toLocaleTimeString(),
     success: Number(s[1]),
     failure: Number(failureSeries[i]?.[1] || 0),
-  }))
-
-  /* ---------------- UI ---------------- */
+  }));
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background">
 
-      {/* 🔥 NAVBAR */}
-      <div className="border-b border-border backdrop-blur-xl bg-background/80 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      {/* NAVBAR */}
 
-          {/* Left */}
+      <div className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Activity className="w-5 h-5 text-primary" />
+            <div className="rounded-lg bg-primary/10 p-2">
+              <Activity className="h-5 w-5 text-primary" />
             </div>
 
             <div>
-              <h1 className="text-lg font-semibold">Dashboard</h1>
+              <h1 className="text-lg font-semibold">
+                Dashboard
+              </h1>
+
               <p className="text-xs text-muted-foreground">
                 Monitor your webhook system
               </p>
             </div>
           </div>
 
-          {/* Right */}
           <div className="flex items-center gap-3">
 
-            {/* LIVE TOGGLE */}
             <button
               onClick={() => setIsLive(!isLive)}
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition
-                ${isLive
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-400/30"
-                  : "bg-muted text-muted-foreground border border-border"
-                }
-              `}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                isLive
+                  ? "border-emerald-400/30 bg-emerald-500/20 text-emerald-400"
+                  : "border-border bg-muted text-muted-foreground"
+              }`}
             >
               <span
-                className={`
-                  w-2 h-2 rounded-full
-                  ${isLive
-                    ? "bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"
-                    : "bg-muted-foreground"}
-                `}
+                className={`h-2 w-2 rounded-full ${
+                  isLive
+                    ? "animate-pulse bg-emerald-400"
+                    : "bg-muted-foreground"
+                }`}
               />
-              {isLive ? "Live" : "Paused"}
+
+              {isLive ? "Streaming" : "Paused"}
             </button>
 
+            <span
+              className={`rounded px-2 py-1 text-xs ${
+                connected
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : "bg-red-500/20 text-red-400"
+              }`}
+            >
+              {status}
+            </span>
+
             <ThemeToggle />
+
             <UserNav user={user} />
           </div>
         </div>
       </div>
 
-      {/* 🔥 BACKGROUND GLOW */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-[-200px] left-[-200px] w-[500px] h-[500px] bg-primary/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-200px] right-[-200px] w-[500px] h-[500px] bg-secondary/20 blur-[120px] rounded-full" />
-      </div>
+      {/* CONTENT */}
 
-      <div className="mx-auto max-w-7xl px-6 py-10 space-y-8">
+      <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
 
-        {/* STATUS BAR */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`rounded-xl p-4 flex justify-between items-center border backdrop-blur-xl
-            ${isHealthy
-              ? "bg-emerald-500/10 border-emerald-400/30 text-emerald-400"
-              : "bg-red-500/10 border-red-400/30 text-red-400"}
-          `}
+          className={`flex items-center justify-between rounded-xl border p-4 backdrop-blur-xl ${
+            isHealthy
+              ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-400"
+              : "border-red-400/30 bg-red-500/10 text-red-400"
+          }`}
         >
           <div className="flex items-center gap-2 text-sm font-medium">
             {isHealthy ? (
               <>
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="h-4 w-4" />
                 All systems operational
               </>
             ) : (
               <>
-                <AlertTriangle className="w-4 h-4" />
+                <AlertTriangle className="h-4 w-4" />
                 Issues detected
               </>
             )}
@@ -2216,57 +252,89 @@ export default function DashboardClient({
 
           <div className="flex items-center gap-4 text-sm">
             <span>{successRate.toFixed(1)}%</span>
+
             <span>{latency}ms</span>
 
-            {isLive && (
-              <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                LIVE
-              </span>
-            )}
+            <span>{buffered} buffered</span>
           </div>
         </motion.div>
 
-        {/* METRICS */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
           {[
-            { label: "Incoming", value: incomingLive },
-            { label: "Delivered", value: deliveredLive },
-            { label: "Failed", value: failedLive },
-            { label: "Retries", value: retries },
-            { label: "Endpoints", value: endpoints?.length || 0 },
-            { label: "Integrations", value: integrations?.length || 0 },
+            {
+              label: "Incoming",
+              value: incomingLive,
+            },
+            {
+              label: "Delivered",
+              value: deliveredLive,
+            },
+            {
+              label: "Failed",
+              value: failedLive,
+            },
+            {
+              label: "Retries",
+              value: retries,
+            },
+            {
+              label: "Endpoints",
+              value: endpoints.length,
+            },
+            {
+              label: "Integrations",
+              value: integrations.length,
+            },
           ].map((stat) => (
             <div
               key={stat.label}
-              className="rounded-xl border bg-card/60 backdrop-blur-xl p-4"
+              className="rounded-xl border bg-card/60 p-4 backdrop-blur-xl"
             >
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-              <p className="text-xl font-bold mt-1">{stat.value}</p>
+              <p className="text-xs text-muted-foreground">
+                {stat.label}
+              </p>
+
+              <p className="mt-1 text-xl font-bold">
+                {stat.value}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* CHART */}
-        <div className="rounded-xl border bg-card/60 backdrop-blur-xl p-6">
-          <h2 className="font-semibold mb-4">Activity</h2>
+        <div className="rounded-xl border bg-card/60 p-6 backdrop-blur-xl">
+          <h2 className="mb-4 font-semibold">
+            Activity
+          </h2>
 
           <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
               <LineChart data={chartData}>
                 <XAxis dataKey="time" />
                 <Tooltip />
-                <Line type="monotone" dataKey="success" stroke="#22c55e" />
-                <Line type="monotone" dataKey="failure" stroke="#ef4444" />
+                <Line
+                  type="monotone"
+                  dataKey="success"
+                  stroke="#22c55e"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="failure"
+                  stroke="#ef4444"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* EVENTS + ENDPOINTS */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid gap-6 md:grid-cols-2">
 
           <div className="rounded-xl border bg-card/60 p-6">
-            <h2 className="font-semibold mb-4">Recent Events</h2>
+            <h2 className="mb-4 font-semibold">
+              Recent Events
+            </h2>
 
             <div className="space-y-2">
               {mergedEvents.map((event) => (
@@ -2279,7 +347,9 @@ export default function DashboardClient({
                   </span>
 
                   <span className="text-muted-foreground">
-                    {new Date(event.created_at).toLocaleTimeString()}
+                    {new Date(
+                      event.created_at
+                    ).toLocaleTimeString()}
                   </span>
                 </div>
               ))}
@@ -2287,20 +357,30 @@ export default function DashboardClient({
           </div>
 
           <div className="rounded-xl border bg-card/60 p-6">
-            <h2 className="font-semibold mb-4">Endpoints</h2>
+            <h2 className="mb-4 font-semibold">
+              Endpoints
+            </h2>
 
             <div className="space-y-2 text-sm">
-              {(endpoints || []).slice(0, 5).map((ep) => (
-                <div key={ep.id} className="flex justify-between">
-                  <span>{ep.route}</span>
-                  <span className="text-muted-foreground">{ep.mode}</span>
-                </div>
-              ))}
+              {endpoints
+                .slice(0, 5)
+                .map((ep) => (
+                  <div
+                    key={ep.id}
+                    className="flex justify-between"
+                  >
+                    <span>{ep.route}</span>
+
+                    <span className="text-muted-foreground">
+                      {ep.mode}
+                    </span>
+                  </div>
+                ))}
             </div>
           </div>
 
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,22 +1,31 @@
 export type Event = {
   id: number
+
+  provider: string
   route: string
-  provider?: string
-  event_type?: string
+  token?: string
 
   status:
     | "pending"
     | "processing"
+    | "retrying"
     | "delivered"
     | "failed"
-    | "retrying"
     | "dlq"
 
-  payload: Record<string, unknown>
+  event_type: string
 
-  attempt_count: number | null
+  latency_ms?: number
+
+  payload_size?: number
+
+  payload?: Record<string, unknown>
+
+  headers?: Record<string, unknown>
 
   created_at: string
 
-  last_error?: string
+  attempt_count: number
+
+  last_error?: string | null
 }

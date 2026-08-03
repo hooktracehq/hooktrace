@@ -4,7 +4,7 @@ import { motion } from "framer-motion"
 import { Activity, CheckCircle2, XCircle, Clock } from "lucide-react"
 import { WebhookEvent } from "@/lib/constants/events"
 
-import { useWebhookStream } from "@/hooks/useWebhookStream"
+import { useWebhookStream } from "@/hooks/streams/useWebhookStream"
 
 
 

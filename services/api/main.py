@@ -127,13 +127,24 @@ app.include_router(
 #  GLOBAL EVENTS STREAM
 @app.websocket("/ws/events")
 async def ws_global(websocket: WebSocket):
-    await manager.connect(websocket, "global", "user")
+
+    await manager.connect(
+        websocket,
+        "",
+        "global",
+    )
+
     try:
         while True:
             await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, "global", "user")
 
+    except WebSocketDisconnect:
+
+        manager.disconnect(
+            websocket,
+            "",
+            "global",
+        )
 
 # EXISTING TOKEN STREAM FOR INTEGRATIONS
 @app.websocket("/ws/{token}")
