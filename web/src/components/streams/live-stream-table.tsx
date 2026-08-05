@@ -1,6 +1,13 @@
 "use client"
 
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react"
+
 import { StreamRow } from "./stream-row"
+
 import type { Event } from "@/types/event"
 
 type Props = {
@@ -14,8 +21,35 @@ export function LiveStreamTable({
   selected,
   onSelect,
 }: Props) {
+
+  const containerRef =
+    useRef<HTMLDivElement>(null)
+
+  const [autoScroll, setAutoScroll] =
+    useState(true)
+
+  useEffect(() => {
+    if (
+      autoScroll &&
+      containerRef.current
+    ) {
+      containerRef.current.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      })
+    }
+  }, [rows, autoScroll])
+
   return (
-    <div className="h-full overflow-auto">
+    <div
+      ref={containerRef}
+      onScroll={(e) => {
+        setAutoScroll(
+          e.currentTarget.scrollTop < 40
+        )
+      }}
+      className="h-full overflow-auto"
+    >
 
       <div
         className="
@@ -40,22 +74,22 @@ export function LiveStreamTable({
 
       </div>
 
-      {rows.map((row, i) => (
+      {rows.map((row) => (
+
         <StreamRow
-          key={i}
+          key={row.id}
           provider={row.provider}
           route={row.route}
           status={row.status}
           latency={row.latency_ms ?? 0}
-          timestamp={new Date(row.created_at ?? new Date())}
+          timestamp={
+            new Date(row.created_at)
+          }
           eventType={row.event_type}
-          selected={
-            selected === row
-          }
-          onClick={() =>
-            onSelect(row)
-          }
+          selected={selected?.id === row.id}
+          onClick={() => onSelect(row)}
         />
+
       ))}
 
     </div>

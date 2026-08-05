@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-
 import type { Event } from "@/types/event";
 
 export type ConnectionStatus =
@@ -7,19 +6,26 @@ export type ConnectionStatus =
   | "connected"
   | "disconnected";
 
+const MAX_EVENTS = 1000;
+
 export function useWebhookStream(path: string) {
   const [events, setEvents] = useState<Event[]>([]);
   const [status, setStatus] =
     useState<ConnectionStatus>("connecting");
 
+  const [reconnectAttempts, setReconnectAttempts] =
+    useState(0);
+
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
   const bufferedRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
 
-    function connect() {
+    function connect(attempt = 0) {
+      if (!mounted) return;
+
       setStatus("connecting");
 
       const protocol =
@@ -34,8 +40,9 @@ export function useWebhookStream(path: string) {
       socketRef.current = socket;
 
       socket.onopen = () => {
-        console.log("[WS] connected");
         if (!mounted) return;
+
+        setReconnectAttempts(0);
         setStatus("connected");
       };
 
@@ -50,34 +57,39 @@ export function useWebhookStream(path: string) {
           );
 
           if (index !== -1) {
-            const next = [...previous];
-            next[index] = data;
-            return next;
+            const copy = [...previous];
+            copy[index] = data;
+            return copy;
           }
 
-          return [data, ...previous];
+          return [data, ...previous].slice(
+            0,
+            MAX_EVENTS
+          );
         });
       };
 
-      socket.onerror = (error) => {
-        console.error("[WS] error", error);
+      socket.onerror = () => {
+        socket.close();
       };
 
-      socket.onclose = (event) => {
-        console.log(
-          "[WS] closed",
-          event.code,
-          event.reason
-        );
-
+      socket.onclose = () => {
         if (!mounted) return;
 
         setStatus("disconnected");
 
-        reconnectRef.current = setTimeout(
-          connect,
-          2000
+        const nextAttempt = attempt + 1;
+
+        setReconnectAttempts(nextAttempt);
+
+        const delay = Math.min(
+          1000 * Math.pow(2, nextAttempt),
+          30000
         );
+
+        reconnectTimer.current = setTimeout(() => {
+          connect(nextAttempt);
+        }, delay);
       };
     }
 
@@ -86,9 +98,8 @@ export function useWebhookStream(path: string) {
     return () => {
       mounted = false;
 
-      if (reconnectRef.current) {
-        clearTimeout(reconnectRef.current);
-      }
+      reconnectTimer.current &&
+        clearTimeout(reconnectTimer.current);
 
       socketRef.current?.close();
     };
@@ -100,5 +111,6 @@ export function useWebhookStream(path: string) {
     connected: status === "connected",
     // eslint-disable-next-line react-hooks/refs
     buffered: bufferedRef.current,
+    reconnectAttempts,
   };
 }
