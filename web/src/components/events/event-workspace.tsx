@@ -14,7 +14,7 @@ import { Loader2 } from "lucide-react"
 
 import { EventToolbar } from "./event-toolbar"
 import { EventStream } from "./event-stream"
-import { EventInspector } from "./event-inspector"
+import { EventDetailsPanel } from "@/components/event-details/event-details-panel"
 import { EventTimeline } from "./event-timeline"
 
 import type { Event } from "@/types/event"
@@ -137,7 +137,7 @@ export function EventWorkspace({
 
                 <div className="panel h-full overflow-hidden">
 
-                  <EventInspector
+                  <EventDetailsPanel
                     event={selectedEvent}
                   />
 

@@ -13,7 +13,7 @@ import {
 } from "react-resizable-panels"
 
 import { LiveStreamTable } from "./live-stream-table"
-import { StreamInspector } from "./stream-inspector"
+import { EventDetailsPanel } from "@/components/event-details/event-details-panel"
 
 type Props = {
   query: string
@@ -132,7 +132,7 @@ export function LiveStream({
           "
         >
 
-          <StreamInspector
+          <EventDetailsPanel
             event={selected}
           />
 
