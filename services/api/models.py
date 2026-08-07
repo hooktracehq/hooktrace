@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -30,6 +30,12 @@ class User(Base):
         "WebhookRoute",
         back_populates="user",
     )
+
+    replay_jobs = relationship(
+    "ReplayJob",
+    back_populates="user",
+)
+
 
 
 class WebhookRoute(Base):
@@ -127,6 +133,132 @@ class WebhookEvent(Base):
     route = relationship(
         "WebhookRoute",
         back_populates="events",
+    )
+
+
+class ReplayJob(Base):
+    __tablename__ = "replay_jobs"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    status = Column(
+        String,
+        nullable=False,
+        default="queued",
+    )
+
+    total_events = Column(
+        Integer,
+        default=0,
+    )
+
+    completed_events = Column(
+        Integer,
+        default=0,
+    )
+
+    failed_events = Column(
+        Integer,
+        default=0,
+    )
+
+    parallelism = Column(
+        Integer,
+        default=5,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    started_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    finished_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    user = relationship(
+    "User",
+    back_populates="replay_jobs",
+)
+
+    events = relationship(
+        "ReplayJobEvent",
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+
+
+
+class ReplayJobEvent(Base):
+    __tablename__ = "replay_job_events"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    replay_job_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("replay_jobs.id"),
+        nullable=False,
+    )
+
+    event_id = Column(
+        Integer,
+        ForeignKey("webhook_events.id"),
+        nullable=False,
+    )
+
+    status = Column(
+        String,
+        nullable=False,
+        default="queued",
+    )
+
+    attempt = Column(
+        Integer,
+        default=0,
+    )
+
+    started_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    finished_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    error = Column(
+        Text,
+        nullable=True,
+    )
+
+    job = relationship(
+        "ReplayJob",
+        back_populates="events",
+    )
+
+    event = relationship(
+        "WebhookEvent",
     )
 
 

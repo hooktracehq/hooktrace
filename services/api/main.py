@@ -20,6 +20,8 @@ from .replay import router as replay_router
 from .events import router as events_router
 from .delivery_targets import router as delivery_targets_router
 from .route_management import router as routes_management_router
+from .replay_jobs import router as replay_jobs_router
+
 # from .webhooks import router as webhooks_router
 
 from .auth import router as auth_router
@@ -105,6 +107,7 @@ app.include_router(replay_router)
 app.include_router(events_router)
 app.include_router(usage_router)
 app.include_router(delivery_targets_router)
+app.include_router(replay_jobs_router)
 # app.include_router(webhooks_router)
 app.include_router(tunnels_router)
 app.include_router(aggregation_router)
