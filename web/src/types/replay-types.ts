@@ -1,5 +1,8 @@
 export type Replay = {
     id: string
+  
+    event_id: number
+  
     status: string
   
     total_events: number
@@ -12,6 +15,7 @@ export type Replay = {
   
     created_at: string
     started_at: string | null
+    finished_at: string | null
   
     provider: string
     event_type: string

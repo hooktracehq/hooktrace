@@ -1,4 +1,3 @@
-
 import asyncio
 import time
 import json
@@ -31,51 +30,9 @@ REPLAY_QUEUE = "replay:jobs"
 MAX_RETRIES = 5
 
 
-# =========================
-# BATCH HELPERS
-# =========================
-
-
-
-
-# =========================
+# =========================================================
 # REALTIME UPDATES
-# =========================
-# def publish_update(
-#     event_id,
-#     status,
-#     attempt=0,
-#     user_id=None,
-#     provider=None,
-#     route=None,
-#     token=None,
-#     created_at=None,
-# ):
-#     try:
-#         payload = {
-#             "id": event_id,
-#             "status": status,
-#             "attempt_count": attempt or 0,
-#             "user_id": str(user_id) if user_id else None,
-#             "provider": provider,
-#             "route": route,
-#             "token": token,
-#             "created_at": created_at.isoformat() if created_at else None,
-#         }
-
-#         subscribers = redis_client.publish(
-#             "events:updates",
-#             json.dumps(payload),
-#         )
-
-#         print(
-#             f"[publish_update] Event {event_id} -> {status} "
-#             f"(subscribers={subscribers})"
-#         )
-
-#     except Exception as e:
-#         print(f"[publish_update] ERROR: {e}")
-
+# =========================================================
 
 def publish_update(
     event_id,
@@ -86,8 +43,6 @@ def publish_update(
     route=None,
     token=None,
     created_at=None,
-
-    # NEW
     event_type=None,
     latency_ms=None,
     payload_size=None,
@@ -99,7 +54,12 @@ def publish_update(
             "status": status,
             "attempt_count": attempt or 0,
 
-            "user_id": str(user_id) if user_id else None,
+            "user_id": (
+                str(user_id)
+                if user_id
+                else None
+            ),
+
             "provider": provider,
             "route": route,
             "token": token,
@@ -110,7 +70,6 @@ def publish_update(
                 else None
             ),
 
-            # New fields
             "event_type": event_type,
             "latency_ms": latency_ms,
             "payload_size": payload_size,
@@ -129,10 +88,51 @@ def publish_update(
         )
 
     except Exception as e:
-        print(f"[publish_update] ERROR: {e}")
-# =========================
-# BATCH PROCESSING
-# =========================
+        print(
+            f"[publish_update] ERROR: {e}"
+        )
+
+
+# =========================================================
+# REPLAY HELPERS
+# =========================================================
+
+def get_replay_job_status(
+    db,
+    replay_job_id,
+):
+    """
+    Get the current parent replay job status.
+    """
+
+    return db.execute(
+        text(
+            """
+            SELECT status
+            FROM replay_jobs
+            WHERE id = :job_id
+            """
+        ),
+        {
+            "job_id": replay_job_id,
+        },
+    ).scalar()
+
+
+def is_replay_cancelled(
+    db,
+    replay_job_id,
+):
+    """
+    Return True when a replay job has been cancelled.
+    """
+
+    status = get_replay_job_status(
+        db,
+        replay_job_id,
+    )
+
+    return status == "cancelled"
 
 
 def finalize_replay_job_for_event(
@@ -140,8 +140,10 @@ def finalize_replay_job_for_event(
     event_id: int,
 ):
     """
-    Finalize any replay jobs associated with this event
-    once all events in the job have reached a terminal state.
+    Finalize replay jobs associated with this event
+    once all replay events reach a terminal state.
+
+    Cancelled replay events are also terminal.
     """
 
     jobs = db.execute(
@@ -158,6 +160,7 @@ def finalize_replay_job_for_event(
     ).fetchall()
 
     for job in jobs:
+
         job_id = job[0]
 
         unfinished = db.execute(
@@ -169,7 +172,8 @@ def finalize_replay_job_for_event(
                     replay_job_id = :job_id
                     AND status NOT IN (
                         'completed',
-                        'failed'
+                        'failed',
+                        'cancelled'
                     )
                 """
             ),
@@ -180,14 +184,16 @@ def finalize_replay_job_for_event(
 
         if unfinished == 0:
 
+            # Don't overwrite a cancelled job.
             db.execute(
                 text(
                     """
                     UPDATE replay_jobs
-                    SET finished_at = COALESCE(
-                        finished_at,
-                        NOW()
-                    )
+                    SET
+                        finished_at = COALESCE(
+                            finished_at,
+                            NOW()
+                        )
                     WHERE
                         id = :job_id
                         AND finished_at IS NULL
@@ -201,10 +207,16 @@ def finalize_replay_job_for_event(
             print(
                 f"[Replay] Job {job_id} finished"
             )
-# =========================
+
+
+# =========================================================
 # EVENT DELIVERY
-# =========================
-def deliver_event(event_id: int):
+# =========================================================
+
+def deliver_event(
+    event_id: int,
+    replay_job_id=None,
+):
     print("worker started")
 
     start = time.perf_counter()
@@ -213,24 +225,62 @@ def deliver_event(event_id: int):
     db = SessionLocal()
 
     try:
-        # =========================
+
+        # =================================================
+        # REPLAY CANCELLATION CHECK
+        # =================================================
+
+        if replay_job_id is not None:
+
+            if is_replay_cancelled(
+                db,
+                replay_job_id,
+            ):
+                print(
+                    f"[Replay] Job "
+                    f"{replay_job_id} "
+                    f"was cancelled. "
+                    f"Skipping event {event_id}."
+                )
+                return
+
+        # =================================================
         # CLAIM EVENT
-        # =========================
-        print(f"Trying to claim event {event_id}")
+        # =================================================
+
+        print(
+            f"Trying to claim event {event_id}"
+        )
 
         claimed = db.execute(
-            text("""
+            text(
+                """
                 UPDATE webhook_events
                 SET
                     status = 'processing',
-                    attempt_count = COALESCE(attempt_count, 0) + 1
-                WHERE id = :id
-                AND status IN ('pending', 'queued', 'retrying')
-            """),
-            {"id": event_id},
+                    attempt_count =
+                        COALESCE(
+                            attempt_count,
+                            0
+                        ) + 1
+                WHERE
+                    id = :id
+                    AND status IN (
+                        'pending',
+                        'queued',
+                        'retrying'
+                    )
+                """
+            ),
+            {
+                "id": event_id,
+            },
         )
 
-        print("claimed rows:", claimed.rowcount)
+        print(
+            "claimed rows:",
+            claimed.rowcount,
+        )
 
         if claimed.rowcount == 0:
             db.rollback()
@@ -238,11 +288,13 @@ def deliver_event(event_id: int):
 
         db.commit()
 
-        # =========================
+        # =================================================
         # LOAD EVENT
-        # =========================
+        # =================================================
+
         row = db.execute(
-            text("""
+            text(
+                """
                 SELECT
                     e.*,
                     r.id AS route_id,
@@ -257,30 +309,89 @@ def deliver_event(event_id: int):
                 JOIN webhook_routes r
                     ON r.id = e.route_id
                 WHERE e.id = :id
-            """),
-            {"id": event_id},
+                """
+            ),
+            {
+                "id": event_id,
+            },
         ).mappings().first()
 
-        print("loaded row:", row)
+        print(
+            "loaded row:",
+            row,
+        )
 
         if not row:
-            print(f"[worker] Event {event_id} not found")
+            print(
+                f"[worker] Event "
+                f"{event_id} not found"
+            )
             return
 
         user_id = row["user_id"]
 
-        # IMPORTANT:
-        # attempt_count was already incremented when claiming.
-        current_attempt = row.get("attempt_count") or 1
+        current_attempt = (
+            row.get("attempt_count")
+            or 1
+        )
 
-        # =========================
+        # =================================================
+        # CHECK REPLAY AGAIN
+        # =================================================
+        #
+        # This protects against:
+        #
+        # worker starts
+        #       ↓
+        # user clicks Cancel
+        #       ↓
+        # worker continues
+        #
+
+        if replay_job_id is not None:
+
+            if is_replay_cancelled(
+                db,
+                replay_job_id,
+            ):
+                print(
+                    f"[Replay] Job "
+                    f"{replay_job_id} "
+                    f"was cancelled after "
+                    f"claiming event {event_id}."
+                )
+
+                # Return the event to a safe state.
+                db.execute(
+                    text(
+                        """
+                        UPDATE webhook_events
+                        SET
+                            status = 'pending'
+                        WHERE id = :event_id
+                        """
+                    ),
+                    {
+                        "event_id": event_id,
+                    },
+                )
+
+                db.commit()
+
+                return
+
+        # =================================================
         # PAYLOAD
-        # =========================
+        # =================================================
+
         payload = row["payload"]
 
         if isinstance(payload, str):
+
             try:
-                payload = json.loads(payload)
+                payload = json.loads(
+                    payload
+                )
             except Exception:
                 payload = {}
 
@@ -291,29 +402,34 @@ def deliver_event(event_id: int):
 
         try:
             payload_size = len(
-                json.dumps(payload).encode("utf-8")
+                json.dumps(
+                    payload
+                ).encode("utf-8")
             )
         except Exception:
             pass
 
-        # =========================
+        # =================================================
         # HEADERS
-        # =========================
+        # =================================================
+
         headers = row["headers"]
 
         if isinstance(headers, str):
+
             try:
-                headers = json.loads(headers)
+                headers = json.loads(
+                    headers
+                )
             except Exception:
                 headers = {}
 
         if headers is None:
             headers = {}
 
-        # =========================
-        # REALTIME: PROCESSING
-        # =========================
-        print("About to call publish_update()")
+        # =================================================
+        # REALTIME PROCESSING
+        # =================================================
 
         publish_update(
             event_id=event_id,
@@ -328,47 +444,56 @@ def deliver_event(event_id: int):
             payload_size=payload_size,
         )
 
-        print("2. publish_update done")
-
-        # =========================
+        # =================================================
         # AGGREGATION
-        # =========================
+        # =================================================
+
         try:
-            print("3. loading aggregation rules")
+
+            print(
+                "loading aggregation rules"
+            )
 
             rules = db.execute(
-                text("""
+                text(
+                    """
                     SELECT
                         id,
                         event_patterns,
                         provider
                     FROM aggregation_rules
-                    WHERE user_id = :user_id
-                    AND enabled = TRUE
-                """),
-                {"user_id": user_id},
+                    WHERE
+                        user_id = :user_id
+                        AND enabled = TRUE
+                    """
+                ),
+                {
+                    "user_id": user_id,
+                },
             ).mappings().all()
 
             print(
-                "4. aggregation rules loaded",
+                "aggregation rules loaded",
                 len(rules),
             )
 
             db.commit()
 
         except Exception as e:
+
             print(
-                f"[worker] aggregation error: {e}"
+                f"[worker] "
+                f"aggregation error: {e}"
             )
 
-        print("5. before mode check")
-
-        # =========================
+        # =================================================
         # DEV MODE
-        # =========================
+        # =================================================
+
         if row["mode"] == "dev":
 
             try:
+
                 redis_client.publish(
                     f"tunnel:{row['token']}",
                     json.dumps(
@@ -389,13 +514,16 @@ def deliver_event(event_id: int):
                 )
 
                 elapsed_ms = round(
-                    (time.perf_counter() - start) * 1000,
+                    (
+                        time.perf_counter()
+                        - start
+                    ) * 1000,
                     2,
                 )
 
-                # Mark event delivered
                 db.execute(
-                    text("""
+                    text(
+                        """
                         UPDATE webhook_events
                         SET
                             status = 'delivered',
@@ -405,7 +533,8 @@ def deliver_event(event_id: int):
                             next_retry_at = NULL,
                             processed_at = NOW()
                         WHERE id = :id
-                    """),
+                        """
+                    ),
                     {
                         "id": event_id,
                         "attempts": current_attempt,
@@ -413,22 +542,48 @@ def deliver_event(event_id: int):
                     },
                 )
 
-                # Complete replay event if applicable
-                db.execute(
-                    text("""
-                        UPDATE replay_job_events
-                        SET
-                            status = 'completed',
-                            finished_at = NOW(),
-                            error = NULL
-                        WHERE
-                            event_id = :event_id
-                            AND status = 'running'
-                    """),
-                    {
-                        "event_id": event_id,
-                    },
-                )
+                # Complete replay event
+                if replay_job_id is not None:
+
+                    db.execute(
+                        text(
+                            """
+                            UPDATE replay_job_events
+                            SET
+                                status = 'completed',
+                                finished_at = NOW(),
+                                error = NULL
+                            WHERE
+                                replay_job_id = :job_id
+                                AND event_id = :event_id
+                                AND status = 'running'
+                            """
+                        ),
+                        {
+                            "job_id": replay_job_id,
+                            "event_id": event_id,
+                        },
+                    )
+
+                else:
+
+                    db.execute(
+                        text(
+                            """
+                            UPDATE replay_job_events
+                            SET
+                                status = 'completed',
+                                finished_at = NOW(),
+                                error = NULL
+                            WHERE
+                                event_id = :event_id
+                                AND status = 'running'
+                            """
+                        ),
+                        {
+                            "event_id": event_id,
+                        },
+                    )
 
                 finalize_replay_job_for_event(
                     db,
@@ -438,7 +593,8 @@ def deliver_event(event_id: int):
                 db.commit()
 
                 events_delivered.labels(
-                    row.get("provider") or "unknown"
+                    row.get("provider")
+                    or "unknown"
                 ).inc()
 
                 publish_update(
@@ -458,15 +614,15 @@ def deliver_event(event_id: int):
                 return
 
             except Exception as e:
+
                 print(
-                    f"[worker] tunnel error: {e}"
+                    f"[worker] "
+                    f"tunnel error: {e}"
                 )
 
-        # =========================
+        # =================================================
         # DELIVERY TARGETS
-        # =========================
-
-        print("Calling router...")
+        # =================================================
 
         delivery_payload = {
             **payload,
@@ -481,11 +637,10 @@ def deliver_event(event_id: int):
             )
         )
 
-        print("ROUTER RESULT:", result)
-
-        # =========================
-        # RESULT
-        # =========================
+        print(
+            "ROUTER RESULT:",
+            result,
+        )
 
         successful = result.get(
             "successful",
@@ -498,20 +653,24 @@ def deliver_event(event_id: int):
         )
 
         elapsed_ms = round(
-            (time.perf_counter() - start) * 1000,
+            (
+                time.perf_counter()
+                - start
+            ) * 1000,
             2,
         )
 
         final_error = None
 
-        # =========================
+        # =================================================
         # SUCCESS
-        # =========================
+        # =================================================
 
         if successful > 0:
 
             db.execute(
-                text("""
+                text(
+                    """
                     UPDATE webhook_events
                     SET
                         status = 'delivered',
@@ -521,7 +680,8 @@ def deliver_event(event_id: int):
                         next_retry_at = NULL,
                         processed_at = NOW()
                     WHERE id = :id
-                """),
+                    """
+                ),
                 {
                     "id": event_id,
                     "attempts": current_attempt,
@@ -530,36 +690,62 @@ def deliver_event(event_id: int):
             )
 
             events_delivered.labels(
-                row.get("provider") or "unknown"
+                row.get("provider")
+                or "unknown"
             ).inc()
 
             status = "delivered"
 
-            # Complete replay event
-            db.execute(
-                text("""
-                    UPDATE replay_job_events
-                    SET
-                        status = 'completed',
-                        finished_at = NOW(),
-                        error = NULL
-                    WHERE
-                        event_id = :event_id
-                        AND status = 'running'
-                """),
-                {
-                    "event_id": event_id,
-                },
-            )
+            if replay_job_id is not None:
+
+                db.execute(
+                    text(
+                        """
+                        UPDATE replay_job_events
+                        SET
+                            status = 'completed',
+                            finished_at = NOW(),
+                            error = NULL
+                        WHERE
+                            replay_job_id = :job_id
+                            AND event_id = :event_id
+                            AND status = 'running'
+                        """
+                    ),
+                    {
+                        "job_id": replay_job_id,
+                        "event_id": event_id,
+                    },
+                )
+
+            else:
+
+                db.execute(
+                    text(
+                        """
+                        UPDATE replay_job_events
+                        SET
+                            status = 'completed',
+                            finished_at = NOW(),
+                            error = NULL
+                        WHERE
+                            event_id = :event_id
+                            AND status = 'running'
+                        """
+                    ),
+                    {
+                        "event_id": event_id,
+                    },
+                )
 
             finalize_replay_job_for_event(
                 db,
                 event_id,
             )
 
-        # =========================
+        # =================================================
         # FAILURE
-        # =========================
+        # =================================================
 
         elif failed > 0:
 
@@ -600,18 +786,13 @@ def deliver_event(event_id: int):
 
             final_error = delivery_error
 
-            # IMPORTANT:
-            # Do NOT increment attempts here.
-            #
-            # attempt_count was already incremented
-            # when the event was claimed.
-
             attempts = current_attempt
 
             if attempts >= MAX_RETRIES:
 
                 db.execute(
-                    text("""
+                    text(
+                        """
                         UPDATE webhook_events
                         SET
                             status = 'dlq',
@@ -620,7 +801,8 @@ def deliver_event(event_id: int):
                             last_error = :error,
                             processed_at = NOW()
                         WHERE id = :id
-                    """),
+                        """
+                    ),
                     {
                         "id": event_id,
                         "attempts": attempts,
@@ -636,22 +818,49 @@ def deliver_event(event_id: int):
 
                 status = "dlq"
 
-                db.execute(
-                    text("""
-                        UPDATE replay_job_events
-                        SET
-                            status = 'failed',
-                            finished_at = NOW(),
-                            error = :error
-                        WHERE
-                            event_id = :event_id
-                            AND status = 'running'
-                    """),
-                    {
-                        "event_id": event_id,
-                        "error": delivery_error,
-                    },
-                )
+                if replay_job_id is not None:
+
+                    db.execute(
+                        text(
+                            """
+                            UPDATE replay_job_events
+                            SET
+                                status = 'failed',
+                                finished_at = NOW(),
+                                error = :error
+                            WHERE
+                                replay_job_id = :job_id
+                                AND event_id = :event_id
+                                AND status = 'running'
+                            """
+                        ),
+                        {
+                            "job_id": replay_job_id,
+                            "event_id": event_id,
+                            "error": delivery_error,
+                        },
+                    )
+
+                else:
+
+                    db.execute(
+                        text(
+                            """
+                            UPDATE replay_job_events
+                            SET
+                                status = 'failed',
+                                finished_at = NOW(),
+                                error = :error
+                            WHERE
+                                event_id = :event_id
+                                AND status = 'running'
+                            """
+                        ),
+                        {
+                            "event_id": event_id,
+                            "error": delivery_error,
+                        },
+                    )
 
                 finalize_replay_job_for_event(
                     db,
@@ -665,7 +874,8 @@ def deliver_event(event_id: int):
                 )
 
                 db.execute(
-                    text("""
+                    text(
+                        """
                         UPDATE webhook_events
                         SET
                             status = 'retrying',
@@ -674,7 +884,8 @@ def deliver_event(event_id: int):
                             last_error = :error,
                             next_retry_at = :retry_at
                         WHERE id = :id
-                    """),
+                        """
+                    ),
                     {
                         "id": event_id,
                         "attempts": attempts,
@@ -685,23 +896,26 @@ def deliver_event(event_id: int):
                 )
 
                 events_retried.labels(
-                    row.get("provider") or "unknown"
+                    row.get("provider")
+                    or "unknown"
                 ).inc()
 
                 status = "retrying"
 
             events_failed.labels(
-                row.get("provider") or "unknown"
+                row.get("provider")
+                or "unknown"
             ).inc()
 
-        # =========================
-        # NO DELIVERY TARGETS
-        # =========================
+        # =================================================
+        # NO DELIVERY TARGET FAILURE
+        # =================================================
 
         else:
 
             db.execute(
-                text("""
+                text(
+                    """
                     UPDATE webhook_events
                     SET
                         status = 'delivered',
@@ -711,7 +925,8 @@ def deliver_event(event_id: int):
                         next_retry_at = NULL,
                         processed_at = NOW()
                     WHERE id = :id
-                """),
+                    """
+                ),
                 {
                     "id": event_id,
                     "attempts": current_attempt,
@@ -720,13 +935,15 @@ def deliver_event(event_id: int):
             )
 
             events_delivered.labels(
-                row.get("provider") or "unknown"
+                row.get("provider")
+                or "unknown"
             ).inc()
 
             status = "delivered"
 
             db.execute(
-                text("""
+                text(
+                    """
                     UPDATE replay_job_events
                     SET
                         status = 'completed',
@@ -735,7 +952,8 @@ def deliver_event(event_id: int):
                     WHERE
                         event_id = :event_id
                         AND status = 'running'
-                """),
+                    """
+                ),
                 {
                     "event_id": event_id,
                 },
@@ -746,9 +964,9 @@ def deliver_event(event_id: int):
                 event_id,
             )
 
-        # =========================
+        # =================================================
         # COMMIT
-        # =========================
+        # =================================================
 
         db.commit()
 
@@ -772,8 +990,8 @@ def deliver_event(event_id: int):
         db.rollback()
 
         print(
-            f"[worker] Error processing event "
-            f"{event_id}: {e}"
+            f"[worker] Error processing "
+            f"event {event_id}: {e}"
         )
 
         raise
@@ -781,41 +999,103 @@ def deliver_event(event_id: int):
     finally:
 
         try:
+
             if row:
+
                 delivery_latency.labels(
-                    row.get("provider") or "unknown"
+                    row.get("provider")
+                    or "unknown"
                 ).observe(
-                    time.perf_counter() - start
+                    time.perf_counter()
+                    - start
                 )
 
         except Exception as e:
+
             print(
                 f"[worker] metrics error: {e}"
             )
 
         db.close()
 
-# =========================
-# REPLAY JOBS
-# =========================
 
-def process_replay_job(job_id):
-    print(f"[Replay] Processing job {job_id}")
+# =========================================================
+# REPLAY JOB PROCESSOR
+# =========================================================
+
+def process_replay_job(
+    job_id,
+):
+    print(
+        f"[Replay] Processing job {job_id}"
+    )
 
     db = SessionLocal()
 
     try:
-        # =========================
-        # MARK JOB STARTED
-        # =========================
+
+        # =================================================
+        # FIRST CANCELLATION CHECK
+        # =================================================
+
+        job_status = get_replay_job_status(
+            db,
+            job_id,
+        )
+
+        if job_status == "cancelled":
+
+            print(
+                f"[Replay] Job {job_id} "
+                "was cancelled before processing. "
+                "Skipping."
+            )
+
+            return
+
+        if job_status is None:
+
+            print(
+                f"[Replay] Job {job_id} "
+                "does not exist."
+            )
+
+            return
+
+        # =================================================
+        # DON'T PROCESS ALREADY FINISHED JOBS
+        # =================================================
+
+        if job_status in (
+            "completed",
+            "failed",
+        ):
+
+            print(
+                f"[Replay] Job {job_id} "
+                f"is already {job_status}. "
+                "Skipping."
+            )
+
+            return
+
+        # =================================================
+        # MARK JOB RUNNING
+        # =================================================
+
         db.execute(
             text(
                 """
                 UPDATE replay_jobs
                 SET
-                    started_at = COALESCE(started_at, NOW()),
-                    finished_at = NULL
-                WHERE id = :id
+                    status = 'running',
+                    started_at = COALESCE(
+                        started_at,
+                        NOW()
+                    )
+                WHERE
+                    id = :id
+                    AND status = 'queued'
                 """
             ),
             {
@@ -825,9 +1105,29 @@ def process_replay_job(job_id):
 
         db.commit()
 
-        # =========================
+        # =================================================
+        # CHECK AGAIN AFTER MARKING RUNNING
+        # =================================================
+
+        job_status = get_replay_job_status(
+            db,
+            job_id,
+        )
+
+        if job_status == "cancelled":
+
+            print(
+                f"[Replay] Job {job_id} "
+                "was cancelled. "
+                "Stopping."
+            )
+
+            return
+
+        # =================================================
         # LOAD REPLAY EVENTS
-        # =========================
+        # =================================================
+
         replay_events = db.execute(
             text(
                 """
@@ -836,7 +1136,8 @@ def process_replay_job(job_id):
                     event_id,
                     status
                 FROM replay_job_events
-                WHERE replay_job_id = :id
+                WHERE
+                    replay_job_id = :id
                 ORDER BY id
                 """
             ),
@@ -846,16 +1147,22 @@ def process_replay_job(job_id):
         ).mappings().all()
 
         if not replay_events:
+
             print(
-                f"[Replay] Job {job_id} has no events"
+                f"[Replay] Job {job_id} "
+                "has no events"
             )
 
             db.execute(
                 text(
                     """
                     UPDATE replay_jobs
-                    SET finished_at = NOW()
-                    WHERE id = :id
+                    SET
+                        status = 'completed',
+                        finished_at = NOW()
+                    WHERE
+                        id = :id
+                        AND status != 'cancelled'
                     """
                 ),
                 {
@@ -864,28 +1171,80 @@ def process_replay_job(job_id):
             )
 
             db.commit()
+
             return
 
-        # =========================
-        # QUEUE REPLAY EVENTS
-        # =========================
+        # =================================================
+        # PROCESS REPLAY EVENTS
+        # =================================================
+
         queued_count = 0
 
         for replay_event in replay_events:
 
-            # Don't queue an event that already completed
-            # or permanently failed.
+            # =================================================
+            # CHECK CANCELLATION BEFORE EVERY EVENT
+            # =================================================
+
+            job_status = get_replay_job_status(
+                db,
+                job_id,
+            )
+
+            if job_status == "cancelled":
+
+                print(
+                    f"[Replay] Job {job_id} "
+                    "cancelled while processing. "
+                    "Stopping."
+                )
+
+                # Cancel events that haven't started.
+                db.execute(
+                    text(
+                        """
+                        UPDATE replay_job_events
+                        SET
+                            status = 'cancelled',
+                            finished_at = COALESCE(
+                                finished_at,
+                                NOW()
+                            )
+                        WHERE
+                            replay_job_id = :job_id
+                            AND status = 'queued'
+                        """
+                    ),
+                    {
+                        "job_id": job_id,
+                    },
+                )
+
+                db.commit()
+
+                return
+
+            # Don't reprocess terminal events.
             if replay_event["status"] in (
                 "completed",
                 "failed",
+                "cancelled",
             ):
                 continue
 
-            replay_job_event_id = replay_event["id"]
-            event_id = replay_event["event_id"]
+            replay_job_event_id = (
+                replay_event["id"]
+            )
 
-            # Mark replay event as running
-            db.execute(
+            event_id = (
+                replay_event["event_id"]
+            )
+
+            # =================================================
+            # MARK REPLAY EVENT RUNNING
+            # =================================================
+
+            updated = db.execute(
                 text(
                     """
                     UPDATE replay_job_events
@@ -897,15 +1256,39 @@ def process_replay_job(job_id):
                         ),
                         attempt = attempt + 1,
                         error = NULL
-                    WHERE id = :id
+                    WHERE
+                        id = :id
+                        AND status = 'queued'
+                        AND EXISTS (
+                            SELECT 1
+                            FROM replay_jobs
+                            WHERE
+                                id = :job_id
+                                AND status != 'cancelled'
+                        )
                     """
                 ),
                 {
                     "id": replay_job_event_id,
+                    "job_id": job_id,
                 },
             )
 
-            # Reset original webhook event
+            if updated.rowcount == 0:
+
+                print(
+                    f"[Replay] Event "
+                    f"{event_id} was not "
+                    "started because job "
+                    f"{job_id} was cancelled."
+                )
+
+                continue
+
+            # =================================================
+            # RESET ORIGINAL EVENT
+            # =================================================
+
             db.execute(
                 text(
                     """
@@ -916,7 +1299,8 @@ def process_replay_job(job_id):
                         next_retry_at = NULL,
                         retry_count = 0,
                         attempt_count = 0
-                    WHERE id = :id
+                    WHERE
+                        id = :id
                     """
                 ),
                 {
@@ -924,41 +1308,67 @@ def process_replay_job(job_id):
                 },
             )
 
-            # Push to normal webhook worker
+            db.commit()
+
+            # =================================================
+            # PUSH TO NORMAL WORKER
+            #
+            # IMPORTANT:
+            # Include replay_job_id so deliver_event()
+            # knows which replay job owns this event.
+            # =================================================
+
+            replay_message = json.dumps(
+                {
+                    "event_id": event_id,
+                    "replay_job_id": str(job_id),
+                }
+            )
+
             redis_client.lpush(
                 QUEUE_MAIN,
-                str(event_id),
+                replay_message,
             )
 
             queued_count += 1
 
-        db.commit()
-
         print(
-            f"[Replay] Job {job_id} queued "
-            f"{queued_count} event(s)"
+            f"[Replay] Job {job_id} "
+            f"queued {queued_count} event(s)"
         )
 
-        # =========================
-        # IMPORTANT
-        # =========================
-        # Do NOT set finished_at here.
+        # IMPORTANT:
+        # Do not mark the job completed here.
         #
-        # Events are only queued at this point.
-        # deliver_event() will set replay_job_events
-        # to completed/failed and will finalize the
-        # replay job when all events are finished.
+        # deliver_event() will complete/fail each
+        # replay_job_event and finalize the parent job.
 
     except Exception:
+
         db.rollback()
+
+        print(
+            f"[Replay] Job {job_id} "
+            "failed unexpectedly"
+        )
+
         raise
 
     finally:
+
         db.close()
 
+
+# =========================================================
+# REPLAY WORKER
+# =========================================================
+
 def replay_worker():
+
     while True:
+
         try:
+
             result = redis_client.brpop(
                 REPLAY_QUEUE,
                 timeout=30,
@@ -969,55 +1379,73 @@ def replay_worker():
 
             _, raw_job = result
 
-            process_replay_job(raw_job)
+            process_replay_job(
+                raw_job
+            )
 
         except Exception as e:
-            print(f"[replay-worker] {e}")
+
+            print(
+                f"[replay-worker] {e}"
+            )
+
             time.sleep(2)
 
 
-
-
-
-# =========================
+# =========================================================
 # RETRY SCHEDULER
-# =========================
+# =========================================================
+
 def retry_scheduler():
+
     while True:
+
         db = SessionLocal()
 
         try:
+
             rows = db.execute(
-                text("""
+                text(
+                    """
                     SELECT id
                     FROM webhook_events
-                    WHERE status='retrying'
-                    AND next_retry_at IS NOT NULL
-                    AND next_retry_at <= NOW()
-                """)
+                    WHERE
+                        status = 'retrying'
+                        AND next_retry_at IS NOT NULL
+                        AND next_retry_at <= NOW()
+                    """
+                )
             ).fetchall()
 
             for row in rows:
+
                 redis_client.lpush(
                     QUEUE_MAIN,
-                    str(row.id)
+                    str(row.id),
                 )
 
             db.commit()
 
         finally:
+
             db.close()
 
         time.sleep(5)
 
 
-# =========================
+# =========================================================
 # MAIN WORKER
-# =========================
-def main():
-    print("[worker] started")
+# =========================================================
 
-    start_http_server(8001)
+def main():
+
+    print(
+        "[worker] started"
+    )
+
+    start_http_server(
+        8001
+    )
 
     Thread(
         target=retry_scheduler,
@@ -1045,9 +1473,39 @@ def main():
 
             try:
 
-                data = json.loads(raw_event)
+                data = json.loads(
+                    raw_event
+                )
+
+                # -----------------------------------------
+                # Replay event message
+                # -----------------------------------------
 
                 if (
+                    isinstance(data, dict)
+                    and data.get("event_id")
+                ):
+
+                    event_id = int(
+                        data["event_id"]
+                    )
+
+                    replay_job_id = (
+                        data.get(
+                            "replay_job_id"
+                        )
+                    )
+
+                    deliver_event(
+                        event_id,
+                        replay_job_id,
+                    )
+
+                # -----------------------------------------
+                # Batch message
+                # -----------------------------------------
+
+                elif (
                     isinstance(data, dict)
                     and data.get("batch")
                 ):
@@ -1063,6 +1521,10 @@ def main():
                             deliver_event(
                                 int(event_id)
                             )
+
+                # -----------------------------------------
+                # Normal event
+                # -----------------------------------------
 
                 else:
 
@@ -1083,6 +1545,7 @@ def main():
             )
 
             time.sleep(2)
+
 
 if __name__ == "__main__":
     main()

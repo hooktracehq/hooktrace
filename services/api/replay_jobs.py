@@ -17,7 +17,14 @@ router = APIRouter(
 )
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+# =========================================================
+# CREATE REPLAY JOB
+# =========================================================
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+)
 def create_replay_job(
     body: dict,
     user_id: UUID = Depends(get_current_user),
@@ -38,13 +45,12 @@ def create_replay_job(
 
     try:
         # -------------------------------------------------
-        # Validate events first
+        # Validate events
         # -------------------------------------------------
 
         valid_event_ids = []
 
         for event_id in event_ids:
-
             exists = db.execute(
                 text(
                     """
@@ -109,7 +115,6 @@ def create_replay_job(
         # -------------------------------------------------
 
         for event_id in valid_event_ids:
-
             db.execute(
                 text(
                     """
@@ -138,7 +143,7 @@ def create_replay_job(
         db.commit()
 
         # -------------------------------------------------
-        # Send job to replay worker
+        # Push job to replay worker
         # -------------------------------------------------
 
         redis_client.lpush(
@@ -154,6 +159,151 @@ def create_replay_job(
 
     finally:
         db.close()
+
+
+# =========================================================
+# REPLAY ALL FAILED EVENTS
+# =========================================================
+
+@router.post(
+    "/failed",
+    status_code=status.HTTP_201_CREATED,
+)
+def replay_all_failed(
+    user_id: UUID = Depends(get_current_user),
+):
+    """
+    Create a replay job containing all failed webhook
+    events belonging to the current user.
+    """
+
+    db = SessionLocal()
+
+    try:
+        # -------------------------------------------------
+        # Find failed webhook events owned by this user
+        # -------------------------------------------------
+
+        rows = db.execute(
+            text(
+                """
+                SELECT DISTINCT
+                    e.id
+                FROM webhook_events e
+
+                JOIN webhook_routes r
+                    ON r.id = e.route_id
+
+                WHERE
+                    r.user_id = :user_id
+                    AND e.status = 'failed'
+
+                ORDER BY
+                    e.id DESC
+                """
+            ),
+            {
+                "user_id": user_id,
+            },
+        ).mappings().all()
+
+        event_ids = [
+            row["id"]
+            for row in rows
+        ]
+
+        if not event_ids:
+            raise HTTPException(
+                status_code=404,
+                detail="No failed events found",
+            )
+
+        # -------------------------------------------------
+        # Create replay job
+        # -------------------------------------------------
+
+        job = db.execute(
+            text(
+                """
+                INSERT INTO replay_jobs
+                (
+                    user_id,
+                    status,
+                    total_events,
+                    parallelism
+                )
+                VALUES
+                (
+                    :user_id,
+                    'queued',
+                    :total,
+                    5
+                )
+                RETURNING id
+                """
+            ),
+            {
+                "user_id": user_id,
+                "total": len(event_ids),
+            },
+        ).first()
+
+        replay_job_id = job[0]
+
+        # -------------------------------------------------
+        # Add failed events to replay job
+        # -------------------------------------------------
+
+        for event_id in event_ids:
+            db.execute(
+                text(
+                    """
+                    INSERT INTO replay_job_events
+                    (
+                        replay_job_id,
+                        event_id,
+                        status,
+                        attempt
+                    )
+                    VALUES
+                    (
+                        :job_id,
+                        :event_id,
+                        'queued',
+                        0
+                    )
+                    """
+                ),
+                {
+                    "job_id": replay_job_id,
+                    "event_id": event_id,
+                },
+            )
+
+        db.commit()
+
+        # -------------------------------------------------
+        # Push replay job to Redis
+        # -------------------------------------------------
+
+        redis_client.lpush(
+            REPLAY_QUEUE,
+            str(replay_job_id),
+        )
+
+        return {
+            "id": str(replay_job_id),
+            "status": "queued",
+            "total_events": len(event_ids),
+        }
+
+    finally:
+        db.close()
+
+
+# =========================================================
+# LIST REPLAY JOBS
+# =========================================================
 
 @router.get("")
 def list_replay_jobs(
@@ -172,6 +322,8 @@ def list_replay_jobs(
                     rj.created_at,
                     rj.started_at,
                     rj.finished_at,
+
+                    rje.event_id,
 
                     COUNT(rje.id) AS attempts,
 
@@ -202,7 +354,8 @@ def list_replay_jobs(
                 LEFT JOIN webhook_events e
                     ON e.id = rje.event_id
 
-                WHERE rj.user_id = :user_id
+                WHERE
+                    rj.user_id = :user_id
 
                 GROUP BY
                     rj.id,
@@ -210,9 +363,11 @@ def list_replay_jobs(
                     rj.parallelism,
                     rj.created_at,
                     rj.started_at,
-                    rj.finished_at
+                    rj.finished_at,
+                    rje.event_id
 
-                ORDER BY rj.created_at DESC
+                ORDER BY
+                    rj.created_at DESC
                 """
             ),
             {
@@ -227,7 +382,12 @@ def list_replay_jobs(
             failed = row["failed_events"] or 0
             running = row["running_events"] or 0
             queued = row["queued_events"] or 0
+
             total = row["total_events"]
+
+            # -------------------------------------------------
+            # Determine replay status
+            # -------------------------------------------------
 
             if running > 0:
                 replay_status = "running"
@@ -245,13 +405,39 @@ def list_replay_jobs(
                 replay_status = "partial"
 
             else:
+                # This can happen for a cancelled job.
+                # Check the actual parent job status below.
                 replay_status = "queued"
+
+            # -------------------------------------------------
+            # Preserve cancelled parent job status
+            # -------------------------------------------------
+
+            parent_status = db.execute(
+                text(
+                    """
+                    SELECT status
+                    FROM replay_jobs
+                    WHERE id = :job_id
+                    """
+                ),
+                {
+                    "job_id": row["id"],
+                },
+            ).scalar()
+
+            if parent_status == "cancelled":
+                replay_status = "cancelled"
 
             jobs.append(
                 {
                     "id": str(row["id"]),
+
                     "status": replay_status,
+
                     "total_events": total,
+
+                    "event_id": row["event_id"],
 
                     "completed_events": completed,
                     "failed_events": failed,
@@ -264,14 +450,217 @@ def list_replay_jobs(
                     "started_at": row["started_at"],
                     "finished_at": row["finished_at"],
 
-                    "provider": row["provider"] or "unknown",
-                    "event_type": row["event_type"] or "unknown",
+                    "provider": (
+                        row["provider"]
+                        or "unknown"
+                    ),
+
+                    "event_type": (
+                        row["event_type"]
+                        or "unknown"
+                    ),
 
                     "attempts": row["attempts"] or 0,
                 }
             )
 
         return jobs
+
+    finally:
+        db.close()
+
+
+# =========================================================
+# REPLAY HISTORY
+# =========================================================
+
+@router.get("/{replay_job_id}/history")
+def get_replay_history(
+    replay_job_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT
+                    rje.id,
+                    rje.attempt,
+                    rje.status,
+                    rje.started_at,
+                    rje.finished_at,
+                    rje.error
+
+                FROM replay_job_events rje
+
+                JOIN replay_jobs rj
+                    ON rj.id = rje.replay_job_id
+
+                WHERE
+                    rje.replay_job_id = :replay_job_id
+                    AND rj.user_id = :user_id
+
+                ORDER BY
+                    rje.attempt ASC,
+                    rje.id ASC
+                """
+            ),
+            {
+                "replay_job_id": replay_job_id,
+                "user_id": user_id,
+            },
+        ).mappings().all()
+
+        return [
+            {
+                "id": row["id"],
+                "attempt": row["attempt"],
+                "status": row["status"],
+                "started_at": row["started_at"],
+                "finished_at": row["finished_at"],
+                "error": row["error"],
+            }
+            for row in rows
+        ]
+
+    finally:
+        db.close()
+
+
+# =========================================================
+# CANCEL REPLAY JOB
+# =========================================================
+
+@router.post("/{replay_job_id}/cancel")
+def cancel_replay_job(
+    replay_job_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+):
+    """
+    Cancel a queued or running replay job.
+
+    The replay worker must also check the parent job status
+    before processing events so that a cancelled Redis job
+    cannot continue executing.
+    """
+
+    db = SessionLocal()
+
+    try:
+        # -------------------------------------------------
+        # Lock the job while changing its state
+        # -------------------------------------------------
+
+        job = db.execute(
+            text(
+                """
+                SELECT
+                    id,
+                    status
+                FROM replay_jobs
+                WHERE
+                    id = :replay_job_id
+                    AND user_id = :user_id
+                FOR UPDATE
+                """
+            ),
+            {
+                "replay_job_id": replay_job_id,
+                "user_id": user_id,
+            },
+        ).mappings().first()
+
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail="Replay job not found",
+            )
+
+        current_status = job["status"]
+
+        # -------------------------------------------------
+        # Already cancelled
+        # -------------------------------------------------
+
+        if current_status == "cancelled":
+            return {
+                "id": str(replay_job_id),
+                "status": "cancelled",
+            }
+
+        # -------------------------------------------------
+        # Finished jobs cannot be cancelled
+        # -------------------------------------------------
+
+        if current_status in (
+            "completed",
+            "failed",
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Replay is already finished",
+            )
+
+        # -------------------------------------------------
+        # Cancel queued/running replay events
+        # -------------------------------------------------
+
+        db.execute(
+            text(
+                """
+                UPDATE replay_job_events
+                SET
+                    status = 'cancelled',
+                    finished_at = COALESCE(
+                        finished_at,
+                        NOW()
+                    )
+
+                WHERE
+                    replay_job_id = :replay_job_id
+                    AND status IN (
+                        'queued',
+                        'running'
+                    )
+                """
+            ),
+            {
+                "replay_job_id": replay_job_id,
+            },
+        )
+
+        # -------------------------------------------------
+        # Cancel parent replay job
+        # -------------------------------------------------
+
+        db.execute(
+            text(
+                """
+                UPDATE replay_jobs
+                SET
+                    status = 'cancelled',
+                    finished_at = COALESCE(
+                        finished_at,
+                        NOW()
+                    )
+
+                WHERE
+                    id = :replay_job_id
+                """
+            ),
+            {
+                "replay_job_id": replay_job_id,
+            },
+        )
+
+        db.commit()
+
+        return {
+            "id": str(replay_job_id),
+            "status": "cancelled",
+        }
 
     finally:
         db.close()

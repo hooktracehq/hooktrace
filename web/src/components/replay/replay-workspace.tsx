@@ -1,6 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 
 import {
   Panel,
@@ -15,21 +20,26 @@ import { ReplayInspector } from "./replay-inspector"
 
 import type { Replay } from "@/types/replay-types"
 
+
 export function ReplayWorkspace() {
   const [query, setQuery] = useState("")
 
-  const [replays, setReplays] = useState<Replay[]>([])
+  const [replays, setReplays] =
+    useState<Replay[]>([])
 
   const [selected, setSelected] =
     useState<Replay | null>(null)
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] =
+    useState(true)
 
-  /*
-   * Load replay jobs
-   */
-  useEffect(() => {
-    async function loadReplays() {
+
+  // =====================================================
+  // LOAD REPLAYS
+  // =====================================================
+
+  const loadReplays = useCallback(
+    async () => {
       try {
         const response = await fetch(
           "http://localhost:3001/replays",
@@ -49,75 +59,132 @@ export function ReplayWorkspace() {
 
         setReplays(data)
 
-        if (data.length > 0) {
-          setSelected(data[0])
-        }
+        // Keep current selection if it
+        // still exists.
+        setSelected((current) => {
+          if (!data.length) {
+            return null
+          }
+
+          if (!current) {
+            return data[0]
+          }
+
+          const updatedSelected =
+            data.find(
+              (item) =>
+                item.id === current.id
+            )
+
+          return (
+            updatedSelected ??
+            data[0]
+          )
+        })
+
       } catch (error) {
+
         console.error(
           "Failed to load replays:",
           error
         )
+
       } finally {
+
         setLoading(false)
       }
-    }
+    },
+    []
+  )
 
+
+  // =====================================================
+  // INITIAL LOAD
+  // =====================================================
+
+  useEffect(() => {
     loadReplays()
-  }, [])
+  }, [loadReplays])
 
-  /*
-   * Search / filter
-   */
+
+  // =====================================================
+  // SEARCH
+  // =====================================================
+
   const filtered = useMemo(() => {
+
     const normalizedQuery =
-      query.toLowerCase().trim()
+      query
+        .toLowerCase()
+        .trim()
 
     if (!normalizedQuery) {
       return replays
     }
 
-    return replays.filter((item) =>
-      `
-        ${item.provider}
-        ${item.event_type}
-        ${item.status}
-        ${item.id}
-      `
-        .toLowerCase()
-        .includes(normalizedQuery)
+    return replays.filter(
+      (item) =>
+        `
+          ${item.provider}
+          ${item.event_type}
+          ${item.status}
+          ${item.id}
+          ${item.event_id}
+        `
+          .toLowerCase()
+          .includes(
+            normalizedQuery
+          )
     )
-  }, [replays, query])
 
-  /*
-   * Replay statistics
-   */
+  }, [
+    replays,
+    query,
+  ])
+
+
+  // =====================================================
+  // STATS
+  // =====================================================
+
   const stats = useMemo(() => {
+
     return {
       queued: replays.reduce(
         (sum, item) =>
-          sum + (item.queued_events || 0),
+          sum +
+          (item.queued_events || 0),
         0
       ),
 
       running: replays.reduce(
         (sum, item) =>
-          sum + (item.running_events || 0),
+          sum +
+          (item.running_events || 0),
         0
       ),
 
       completed: replays.reduce(
         (sum, item) =>
-          sum + (item.completed_events || 0),
+          sum +
+          (item.completed_events || 0),
         0
       ),
 
       failed: replays.reduce(
         (sum, item) =>
-          sum + (item.failed_events || 0),
+          sum +
+          (item.failed_events || 0),
         0
       ),
     }
+
   }, [replays])
+
+
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
     <div
@@ -132,58 +199,130 @@ export function ReplayWorkspace() {
         bg-surface-1
       "
     >
-      {/* Toolbar */}
+
+      {/* ================================================
+          TOOLBAR
+      ================================================= */}
+
       <ReplayToolbar
         query={query}
         setQuery={setQuery}
+        onReplayCreated={loadReplays}
       />
 
-      {/* Stats */}
+
+      {/* ================================================
+          STATS
+      ================================================= */}
+
       <ReplayStats
         stats={stats}
       />
 
-      {/* Workspace */}
-      <PanelGroup direction="horizontal">
 
-        {/* Replay list */}
+      {/* ================================================
+          WORKSPACE
+      ================================================= */}
+
+      <PanelGroup
+        direction="horizontal"
+      >
+
+        {/* ==============================================
+            REPLAY LIST
+        =============================================== */}
+
         <Panel
           defaultSize={68}
           minSize={45}
         >
+
           {loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+
+            <div
+              className="
+                flex
+                h-full
+                items-center
+                justify-center
+                text-sm
+                text-muted-foreground
+              "
+            >
               Loading replays...
             </div>
+
           ) : filtered.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+
+            <div
+              className="
+                flex
+                h-full
+                items-center
+                justify-center
+                text-sm
+                text-muted-foreground
+              "
+            >
               No replays found
             </div>
+
           ) : (
+
             <ReplayStream
               replays={filtered}
               selected={selected}
               onSelect={setSelected}
             />
+
           )}
+
         </Panel>
 
-        {/* Resize handle */}
-        <PanelResizeHandle className="w-2 bg-border/40" />
 
-        {/* Inspector */}
+        {/* ==============================================
+            RESIZE HANDLE
+        =============================================== */}
+
+        <PanelResizeHandle
+          className="
+            w-2
+            bg-border/40
+            transition-colors
+            hover:bg-orange-500/20
+          "
+        />
+
+
+        {/* ==============================================
+            INSPECTOR
+        =============================================== */}
+
         <Panel
           defaultSize={32}
           minSize={24}
         >
-          <div className="h-full border-l border-border bg-background/20">
+
+          <div
+            className="
+              h-full
+              border-l
+              border-border
+              bg-background/20
+            "
+          >
+
             <ReplayInspector
               replay={selected}
+              onReplayCreated={loadReplays}
             />
+
           </div>
+
         </Panel>
 
       </PanelGroup>
+
     </div>
   )
 }
