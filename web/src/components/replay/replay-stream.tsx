@@ -1,22 +1,12 @@
 "use client"
 
 import { ReplayRow } from "./replay-row"
-
-type Replay = {
-  id: string
-  provider: string
-  eventType: string
-  status: string
-  attempts: number
-  started: string
-}
+import type { Replay } from "@/types/replay-types"
 
 type Props = {
   replays: Replay[]
   selected: Replay | null
-  onSelect: (
-    replay: Replay
-  ) => void
+  onSelect: (replay: Replay) => void
 }
 
 export function ReplayStream({
@@ -59,7 +49,6 @@ export function ReplayStream({
           }
         />
       ))}
-
     </div>
   )
 }

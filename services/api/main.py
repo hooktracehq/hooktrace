@@ -1,9 +1,3 @@
-
-
-
-
-
-
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
@@ -22,44 +16,32 @@ from .delivery_targets import router as delivery_targets_router
 from .route_management import router as routes_management_router
 from .replay_jobs import router as replay_jobs_router
 
-# from .webhooks import router as webhooks_router
-
 from .auth import router as auth_router
 from .aggregation import router as aggregation_router
 from .usage import router as usage_router
 from .integrations import router as integrations_router
-
-# REST API
 from .tunnels import router as tunnels_router
 
-
-
-# Dev Mode Gateway
+# Dev Mode
 from services.tunnels.tunnel_gateway import (
     router as tunnel_gateway_router,
 )
 
-# Reverse Proxy
 from services.tunnels.tunnel_proxy import (
     router as tunnel_proxy_router,
 )
 
-# Websocket
+# WebSocket
 from .ws import manager
-from .subscriber import (
-    start_redis_subscriber,
+from .subscriber import start_redis_subscriber
 
-)
-
-
-
-from  . import metrics
-
-# -----------------------------
-# App Init
-# -----------------------------
+from . import metrics
 
 app = FastAPI(title="Hooktrace API")
+
+# -----------------------------
+# Background subscriber
+# -----------------------------
 
 Thread(
     target=start_redis_subscriber,
@@ -67,10 +49,8 @@ Thread(
     daemon=True,
 ).start()
 
-
-
 # -----------------------------
-# CORS
+# Middleware
 # -----------------------------
 
 app.add_middleware(
@@ -86,11 +66,11 @@ app.add_middleware(
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("JWT_SECRET", "dev-secret")
+    secret_key=os.getenv("JWT_SECRET", "dev-secret"),
 )
 
 # -----------------------------
-# DB Init
+# Database
 # -----------------------------
 
 Base.metadata.create_all(bind=engine)
@@ -108,48 +88,28 @@ app.include_router(events_router)
 app.include_router(usage_router)
 app.include_router(delivery_targets_router)
 app.include_router(replay_jobs_router)
-# app.include_router(webhooks_router)
 app.include_router(tunnels_router)
 app.include_router(aggregation_router)
 app.include_router(integrations_router)
-app.include_router(
-    tunnel_gateway_router
-)
-
-app.include_router(
-    tunnel_proxy_router
-)
-
-
-
+app.include_router(tunnel_gateway_router)
+app.include_router(tunnel_proxy_router)
 
 # -----------------------------
 # WebSocket Endpoints
 # -----------------------------
 
-#  GLOBAL EVENTS STREAM
 @app.websocket("/ws/events")
 async def ws_global(websocket: WebSocket):
-
-    await manager.connect(
-        websocket,
-        "",
-        "global",
-    )
+    await manager.connect(websocket, "", "global")
 
     try:
         while True:
             await websocket.receive_text()
 
     except WebSocketDisconnect:
+        manager.disconnect(websocket, "", "global")
 
-        manager.disconnect(
-            websocket,
-            "",
-            "global",
-        )
 
-# EXISTING TOKEN STREAM FOR INTEGRATIONS
 @app.websocket("/ws/{token}")
 async def ws_token(websocket: WebSocket, token: str):
     await manager.connect(websocket, token, "token")
@@ -157,11 +117,11 @@ async def ws_token(websocket: WebSocket, token: str):
     try:
         while True:
             await websocket.receive_text()
+
     except WebSocketDisconnect:
         manager.disconnect(websocket, token, "token")
 
 
-# USER EVENTS STREAM
 @app.websocket("/ws/user/{user_id}")
 async def ws_user(websocket: WebSocket, user_id: str):
     await manager.connect(websocket, user_id, "user")
@@ -169,11 +129,11 @@ async def ws_user(websocket: WebSocket, user_id: str):
     try:
         while True:
             await websocket.receive_text()
+
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id, "user")
 
 
-# PROVIDER EVENTS STREAM
 @app.websocket("/ws/provider/{provider}")
 async def ws_provider(websocket: WebSocket, provider: str):
     await manager.connect(websocket, provider, "provider")
@@ -181,11 +141,11 @@ async def ws_provider(websocket: WebSocket, provider: str):
     try:
         while True:
             await websocket.receive_text()
+
     except WebSocketDisconnect:
         manager.disconnect(websocket, provider, "provider")
 
 
-# ROUTE EVENTS STREAM
 @app.websocket("/ws/route/{route}")
 async def ws_route(websocket: WebSocket, route: str):
     await manager.connect(websocket, route, "route")
@@ -193,31 +153,26 @@ async def ws_route(websocket: WebSocket, route: str):
     try:
         while True:
             await websocket.receive_text()
+
     except WebSocketDisconnect:
         manager.disconnect(websocket, route, "route")
 
-        
 # -----------------------------
 # Metrics
 # -----------------------------
 
 @app.get("/metrics")
 def metrics_endpoint():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
-
-
-
-
-
+    return Response(
+        generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
 
 from .metrics_dashboard import (
     router as metrics_dashboard_router,
 )
 
 app.include_router(metrics_dashboard_router)
-
-
 
 from .metrics import webhooks_received
 

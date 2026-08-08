@@ -1,7 +1,7 @@
 "use client"
 
 import JsonView from "@uiw/react-json-view"
-
+import type { Replay } from "@/types/replay-types"
 import {
   RotateCcw,
   Clock3,
@@ -12,14 +12,6 @@ import {
 
 import { ReplayHistory } from "./replay-history"
 
-type Replay = {
-  id: string
-  provider: string
-  eventType: string
-  status: string
-  attempts: number
-  started: string
-}
 
 type Props = {
   replay: Replay | null
@@ -92,7 +84,7 @@ export function ReplayInspector({
             </span>
 
             <span className="font-medium">
-              {replay.eventType}
+              {replay.event_type}
             </span>
           </div>
 
@@ -127,7 +119,7 @@ export function ReplayInspector({
               Started
             </span>
 
-            <span>{replay.started}</span>
+            <span>{replay.started_at || replay.created_at}</span>
           </div>
 
         </div>
@@ -151,10 +143,10 @@ export function ReplayInspector({
               value={{
                 replayId: replay.id,
                 provider: replay.provider,
-                eventType: replay.eventType,
+                eventType: replay.event_type,
                 attempts: replay.attempts,
                 status: replay.status,
-                started: replay.started,
+                started: replay.started_at || replay.created_at,
               }}
               displayDataTypes={false}
               displayObjectSize={false}

@@ -48,16 +48,18 @@ def verify(request: Request, secret: str) -> bool:
 
 def extract_event_type(payload: dict) -> str:
     """
-    Extracts event type from Stripe webhook payload.
+    Extract the Stripe event type.
 
     Example:
         payment_intent.succeeded
-
-    Returns:
-        Event type string or "unknown" if not present.
+        charge.succeeded
+        checkout.session.completed
     """
-    return payload.get("type", "unknown")
 
+    if not isinstance(payload, dict):
+        return "unknown"
+
+    return payload.get("type") or "unknown"
 
 
 

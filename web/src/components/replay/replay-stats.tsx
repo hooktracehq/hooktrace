@@ -1,34 +1,45 @@
 "use client"
 
-const stats = [
-  {
-    label: "Queued",
-    value: "42",
-  },
-  {
-    label: "Running",
-    value: "8",
-  },
-  {
-    label: "Completed",
-    value: "612",
-  },
-  {
-    label: "Failed",
-    value: "13",
-  },
-]
+type ReplayStatsData = {
+  queued: number
+  running: number
+  completed: number
+  failed: number
+}
 
-export function ReplayStats() {
+type Props = {
+  stats: ReplayStatsData
+}
+
+export function ReplayStats({ stats }: Props) {
+  const items = [
+    {
+      label: "Queued",
+      value: stats.queued,
+    },
+    {
+      label: "Running",
+      value: stats.running,
+    },
+    {
+      label: "Completed",
+      value: stats.completed,
+    },
+    {
+      label: "Failed",
+      value: stats.failed,
+    },
+  ]
+
   return (
     <div className="grid grid-cols-4 border-b border-border">
-
-      {stats.map((item) => (
+      {items.map((item) => (
         <div
           key={item.label}
           className="
             border-r border-border
-            px-5 py-4 last:border-r-0
+            px-5 py-4
+            last:border-r-0
           "
         >
           <p className="text-xs text-muted-foreground">
@@ -40,7 +51,6 @@ export function ReplayStats() {
           </p>
         </div>
       ))}
-
     </div>
   )
 }
