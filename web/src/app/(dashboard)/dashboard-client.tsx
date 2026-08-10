@@ -1,386 +1,549 @@
-"use client";
-
-import { useState } from "react";
-import { motion } from "framer-motion";
-
-import { useWebhookStream } from "@/hooks/streams/useWebhookStream";
+"use client"
 
 import {
-  CheckCircle2,
   AlertTriangle,
-  Activity,
-} from "lucide-react";
+  CheckCircle2,
+} from "lucide-react"
 
+import { motion } from "framer-motion"
+
+import { cn } from "@/lib/utils"
+
+import { useWebhookStream } from "@/hooks/streams/useWebhookStream"
 import {
-  LineChart,
-  Line,
-  XAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+  useDashboardOverview,
+} from "@/hooks/dashboard/use-dashboard-overview"
 
-import { ThemeToggle } from "@/components/theme-toggle";
-import { UserNav } from "@/components/user-nav";
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
+import { ThroughputChart } from "@/components/dashboard/throughput-chart"
+import { RecentFailures } from "@/components/dashboard/recent-failures"
+import { RecentEvents } from "@/components/dashboard/recent-events"
+import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown"
+import { InfraHealth } from "@/components/dashboard/infra-health"
 
-type Stat = {
-  label: string;
-  value: number;
-};
-
-type Event = {
-  id: number;
-  provider?: string;
-  route?: string;
-  token?: string;
-
-  status:
-    | "pending"
-    | "processing"
-    | "retrying"
-    | "delivered"
-    | "failed"
-    | "dlq";
-
-  event_type?: string;
-
-  latency_ms?: number;
-
-  payload?: Record<string, unknown>;
-
-  headers?: Record<string, unknown>;
-
-  created_at: string;
-
-  attempt_count?: number;
-
-  last_error?: string | null;
-};
-
-type Endpoint = {
-  id: string;
-  route: string;
-  mode: string;
-};
-
-type Integration = {
-  id: string;
-  name: string;
-  provider: string;
-};
-
-type User = {
-  email: string;
-  name?: string;
-  avatar_url?: string;
-};
-
-export default function DashboardClient({
-  stats,
-  successSeries,
-  failureSeries,
-  recentEvents,
-  endpoints,
-  integrations,
-  dlqCount,
-  latency,
-  user,
-}: {
-  stats: Stat[];
-  successSeries: [number, string][];
-  failureSeries: [number, string][];
-  recentEvents: Event[];
-  endpoints: Endpoint[];
-  integrations: Integration[];
-  dlqCount: number;
-  latency: number;
-  user: User;
-}) {
-  const [isLive, setIsLive] = useState(true);
+export default function DashboardClient() {
+  const {
+    data,
+    loading,
+    error,
+  } = useDashboardOverview()
 
   const {
-    events: liveEvents,
+    events: liveEvents = [],
     status,
     connected,
-    buffered,
-  } = useWebhookStream("/ws/events");
+  } = useWebhookStream("/ws/events")
 
-  /* ---------------- Derived ---------------- */
+  /*
+   * -----------------------------------------
+   * Loading
+   * -----------------------------------------
+   */
 
-  const incoming =
-    stats.find((s) => s.label === "Total Events")?.value ?? 0;
+  if (loading) {
+    return (
+      <div className="flex min-h-[70vh] w-full items-center justify-center">
+        <div className="w-full max-w-md px-6">
+          <div className="space-y-3">
+            <div className="h-7 w-32 animate-pulse rounded-md bg-white/[0.05]" />
 
-  const delivered =
-    stats.find((s) => s.label === "Delivered")?.value ?? 0;
+            <div className="h-4 w-64 animate-pulse rounded-md bg-white/[0.04]" />
 
-  const failed =
-    stats.find((s) => s.label === "Failed")?.value ?? 0;
-
-  const retries =
-    stats.find((s) => s.label === "Retries")?.value ?? 0;
-
-  const mergedEvents = [
-    ...(isLive ? liveEvents : []),
-    ...(recentEvents ?? []),
-  ]
-    .filter(
-      (event, index, array) =>
-        array.findIndex((e) => e.id === event.id) === index
+            <div className="mt-8 grid grid-cols-2 gap-3">
+              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
+              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
+              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
+              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
+            </div>
+          </div>
+        </div>
+      </div>
     )
-    .slice(0, 10);
+  }
 
-  const incomingLive =
-    incoming + (isLive ? liveEvents.length : 0);
+  /*
+   * -----------------------------------------
+   * Error
+   * -----------------------------------------
+   */
 
-  const deliveredLive =
-    delivered +
-    (isLive
-      ? liveEvents.filter(
-          (e) => e.status === "delivered"
-        ).length
-      : 0);
-
-  const failedLive =
-    failed +
-    (isLive
-      ? liveEvents.filter(
-          (e) => e.status === "failed"
-        ).length
-      : 0);
-
-  const successRate =
-    incomingLive > 0
-      ? (deliveredLive / incomingLive) * 100
-      : 100;
-
-  const isHealthy =
-    successRate > 95 && dlqCount === 0;
-
-  const chartData = successSeries.map((s, i) => ({
-    time: new Date(s[0] * 1000).toLocaleTimeString(),
-    success: Number(s[1]),
-    failure: Number(failureSeries[i]?.[1] || 0),
-  }));
-
-  return (
-    <div className="min-h-screen relative overflow-hidden bg-background">
-
-      {/* NAVBAR */}
-
-      <div className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2">
-              <Activity className="h-5 w-5 text-primary" />
+  if (error || !data) {
+    return (
+      <div className="w-full px-6 py-8">
+        <div
+          className="
+            rounded-2xl
+            border
+            border-rose-500/20
+            bg-rose-500/[0.04]
+            p-6
+          "
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className="
+                flex
+                h-9
+                w-9
+                shrink-0
+                items-center
+                justify-center
+                rounded-full
+                bg-rose-500/10
+              "
+            >
+              <AlertTriangle className="h-4 w-4 text-rose-400" />
             </div>
 
             <div>
-              <h1 className="text-lg font-semibold">
+              <p className="text-sm font-medium">
+                Unable to load dashboard
+              </p>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                {error || "No dashboard data available."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /*
+   * -----------------------------------------
+   * Safe backend data
+   * -----------------------------------------
+   */
+
+  const stats = data.stats ?? {}
+
+  const recentEvents = Array.isArray(data.recent_events)
+    ? data.recent_events
+    : []
+
+  const recentFailures = Array.isArray(data.recent_failures)
+    ? data.recent_failures
+    : []
+
+  const activity = Array.isArray(data.activity)
+    ? data.activity
+    : []
+
+  const safeLiveEvents = Array.isArray(liveEvents)
+    ? liveEvents
+    : []
+
+  /*
+   * -----------------------------------------
+   * Merge REST + WebSocket events
+   * -----------------------------------------
+   */
+
+  const existingEventIds = new Set(
+    recentEvents.map((event) => String(event.id))
+  )
+
+  const newLiveEvents = safeLiveEvents.filter(
+    (event) =>
+      !existingEventIds.has(String(event.id))
+  )
+
+  /*
+   * -----------------------------------------
+   * Live statistics
+   * -----------------------------------------
+   */
+
+  const liveIncoming =
+    Number(stats.incoming ?? 0) +
+    newLiveEvents.length
+
+  const liveDelivered =
+    Number(stats.delivered ?? 0) +
+    newLiveEvents.filter(
+      (event) => event.status === "delivered"
+    ).length
+
+  const liveFailed =
+    Number(stats.failed ?? 0) +
+    newLiveEvents.filter(
+      (event) => event.status === "failed"
+    ).length
+
+  const liveRetries =
+    Number(stats.retries ?? 0)
+
+  const liveDlq =
+    Number(stats.dlq ?? 0)
+
+  const liveLatency =
+    Number(stats.avg_latency_ms ?? 0)
+
+  const successRate =
+    liveIncoming > 0
+      ? (liveDelivered / liveIncoming) * 100
+      : 100
+
+  const healthy =
+    successRate >= 95 &&
+    liveDlq === 0
+
+  /*
+   * -----------------------------------------
+   * Combined events
+   * -----------------------------------------
+   */
+
+  const mergedEvents = [
+    ...newLiveEvents,
+    ...recentEvents,
+  ]
+    .filter(
+      (event, index, array) =>
+        array.findIndex(
+          (item) =>
+            String(item.id) ===
+            String(event.id)
+        ) === index
+    )
+    .slice(0, 10)
+
+  return (
+    <div className="w-full min-w-0">
+
+      {/* ===================================== */}
+      {/* Header */}
+      {/* ===================================== */}
+
+      <header
+        className="
+          border-b
+          border-border
+          bg-background/80
+          backdrop-blur-xl
+        "
+      >
+        <div
+          className="
+            flex
+            w-full
+            items-center
+            justify-between
+            gap-4
+            px-4
+            py-5
+            sm:px-6
+            lg:px-8
+          "
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-semibold tracking-tight">
                 Dashboard
               </h1>
 
-              <p className="text-xs text-muted-foreground">
-                Monitor your webhook system
-              </p>
+              <div
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium",
+                  connected
+                    ? "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400"
+                    : "border-border bg-white/[0.02] text-muted-foreground"
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    connected
+                      ? "animate-pulse bg-emerald-400"
+                      : "bg-zinc-500"
+                  )}
+                />
+
+                {connected ? "Live" : status}
+              </div>
             </div>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Monitor your webhook infrastructure
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="hidden text-right sm:block">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Delivery success
+            </p>
 
-            <button
-              onClick={() => setIsLive(!isLive)}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                isLive
-                  ? "border-emerald-400/30 bg-emerald-500/20 text-emerald-400"
-                  : "border-border bg-muted text-muted-foreground"
-              }`}
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  isLive
-                    ? "animate-pulse bg-emerald-400"
-                    : "bg-muted-foreground"
-                }`}
-              />
-
-              {isLive ? "Streaming" : "Paused"}
-            </button>
-
-            <span
-              className={`rounded px-2 py-1 text-xs ${
-                connected
-                  ? "bg-emerald-500/20 text-emerald-400"
-                  : "bg-red-500/20 text-red-400"
-              }`}
-            >
-              {status}
-            </span>
-
-            <ThemeToggle />
-
-            <UserNav user={user} />
+            <p className="mt-0.5 text-sm font-semibold">
+              {successRate.toFixed(1)}%
+            </p>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* CONTENT */}
+      {/* ===================================== */}
+      {/* Main Dashboard */}
+      {/* ===================================== */}
 
-      <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
+      <main
+        className="
+          w-full
+          min-w-0
+          space-y-6
+          px-4
+          py-6
+          sm:px-6
+          lg:px-8
+        "
+      >
 
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
+        {/* ================================= */}
+        {/* Health */}
+        {/* ================================= */}
+
+        <motion.section
+          initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`flex items-center justify-between rounded-xl border p-4 backdrop-blur-xl ${
-            isHealthy
-              ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-400"
-              : "border-red-400/30 bg-red-500/10 text-red-400"
-          }`}
+          className={cn(
+            "flex w-full min-w-0 flex-col gap-4 rounded-2xl border px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
+            healthy
+              ? "border-emerald-500/20 bg-emerald-500/[0.035]"
+              : "border-rose-500/20 bg-rose-500/[0.035]"
+          )}
         >
-          <div className="flex items-center gap-2 text-sm font-medium">
-            {isHealthy ? (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                All systems operational
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="h-4 w-4" />
-                Issues detected
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-sm">
-            <span>{successRate.toFixed(1)}%</span>
-
-            <span>{latency}ms</span>
-
-            <span>{buffered} buffered</span>
-          </div>
-        </motion.div>
-
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-          {[
-            {
-              label: "Incoming",
-              value: incomingLive,
-            },
-            {
-              label: "Delivered",
-              value: deliveredLive,
-            },
-            {
-              label: "Failed",
-              value: failedLive,
-            },
-            {
-              label: "Retries",
-              value: retries,
-            },
-            {
-              label: "Endpoints",
-              value: endpoints.length,
-            },
-            {
-              label: "Integrations",
-              value: integrations.length,
-            },
-          ].map((stat) => (
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              key={stat.label}
-              className="rounded-xl border bg-card/60 p-4 backdrop-blur-xl"
+              className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                healthy
+                  ? "bg-emerald-500/10"
+                  : "bg-rose-500/10"
+              )}
             >
-              <p className="text-xs text-muted-foreground">
-                {stat.label}
+              {healthy ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-rose-400" />
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                {healthy
+                  ? "All systems operational"
+                  : "Attention required"}
               </p>
 
-              <p className="mt-1 text-xl font-bold">
-                {stat.value}
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {healthy
+                  ? "Webhook deliveries are processing normally."
+                  : `${liveFailed} delivery ${
+                      liveFailed === 1
+                        ? "failure"
+                        : "failures"
+                    } detected.`}
               </p>
             </div>
-          ))}
-        </div>
-
-        <div className="rounded-xl border bg-card/60 p-6 backdrop-blur-xl">
-          <h2 className="mb-4 font-semibold">
-            Activity
-          </h2>
-
-          <div className="h-[320px]">
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
-              <LineChart data={chartData}>
-                <XAxis dataKey="time" />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="success"
-                  stroke="#22c55e"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="failure"
-                  stroke="#ef4444"
-                />
-              </LineChart>
-            </ResponsiveContainer>
           </div>
-        </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+          <div className="flex shrink-0 items-center gap-5">
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Success
+              </p>
 
-          <div className="rounded-xl border bg-card/60 p-6">
-            <h2 className="mb-4 font-semibold">
-              Recent Events
-            </h2>
+              <p className="mt-0.5 text-sm font-semibold">
+                {successRate.toFixed(1)}%
+              </p>
+            </div>
 
-            <div className="space-y-2">
-              {mergedEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex justify-between text-sm"
-                >
-                  <span>
-                    #{event.id} {event.provider}
-                  </span>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Latency
+              </p>
 
-                  <span className="text-muted-foreground">
-                    {new Date(
-                      event.created_at
-                    ).toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
+              <p className="mt-0.5 text-sm font-semibold">
+                {liveLatency}ms
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                DLQ
+              </p>
+
+              <p
+                className={cn(
+                  "mt-0.5 text-sm font-semibold",
+                  liveDlq > 0
+                    ? "text-rose-400"
+                    : "text-foreground"
+                )}
+              >
+                {liveDlq}
+              </p>
             </div>
           </div>
+        </motion.section>
 
-          <div className="rounded-xl border bg-card/60 p-6">
-            <h2 className="mb-4 font-semibold">
-              Endpoints
-            </h2>
+        {/* ================================= */}
+        {/* KPI */}
+        {/* ================================= */}
 
-            <div className="space-y-2 text-sm">
-              {endpoints
-                .slice(0, 5)
-                .map((ep) => (
-                  <div
-                    key={ep.id}
-                    className="flex justify-between"
-                  >
-                    <span>{ep.route}</span>
+        <section className="w-full min-w-0">
+          <DashboardOverview
+            stats={{
+              incoming: liveIncoming,
+              delivered: liveDelivered,
+              failed: liveFailed,
+              retries: liveRetries,
+              dlq: liveDlq,
+              avg_latency_ms: liveLatency,
+            }}
+          />
+        </section>
 
-                    <span className="text-muted-foreground">
-                      {ep.mode}
-                    </span>
-                  </div>
-                ))}
-            </div>
+        {/* ================================= */}
+        {/* Throughput */}
+        {/* ================================= */}
+
+        <motion.section
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="
+            block
+            w-full
+            min-w-0
+            overflow-hidden
+            rounded-2xl
+            border
+            border-border
+            bg-surface-1
+            p-5
+            sm:p-6
+          "
+        >
+          <div className="w-full min-w-0">
+            <ThroughputChart
+              activity={activity}
+            />
           </div>
+        </motion.section>
 
-        </div>
-      </div>
+        {/* ================================= */}
+        {/* Recent Events + Failures */}
+        {/* ================================= */}
+
+        <section
+          className="
+            grid
+            w-full
+            min-w-0
+            grid-cols-1
+            gap-6
+            xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.8fr)]
+          "
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14 }}
+            className="
+              min-w-0
+              w-full
+              overflow-hidden
+              rounded-2xl
+              border
+              border-border
+              bg-surface-1
+              p-5
+              sm:p-6
+            "
+          >
+            <RecentEvents
+              events={mergedEvents}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="
+              min-w-0
+              w-full
+              overflow-hidden
+              rounded-2xl
+              border
+              border-border
+              bg-surface-1
+              p-5
+              sm:p-6
+            "
+          >
+            <RecentFailures
+              failures={recentFailures}
+            />
+          </motion.div>
+        </section>
+
+        {/* ================================= */}
+        {/* Provider + Infrastructure */}
+        {/* ================================= */}
+
+        <section
+          className="
+            grid
+            w-full
+            min-w-0
+            grid-cols-1
+            gap-6
+            lg:grid-cols-2
+          "
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+            className="
+              min-w-0
+              w-full
+              overflow-hidden
+              rounded-2xl
+              border
+              border-border
+              bg-surface-1
+              p-5
+              sm:p-6
+            "
+          >
+            <ProviderBreakdown
+              events={mergedEvents}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.26 }}
+            className="
+              min-w-0
+              w-full
+              overflow-hidden
+              rounded-2xl
+              border
+              border-border
+              bg-surface-1
+              p-5
+              sm:p-6
+            "
+          >
+            <InfraHealth />
+          </motion.div>
+        </section>
+
+      </main>
     </div>
-  );
+  )
 }

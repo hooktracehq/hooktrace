@@ -15,7 +15,7 @@ from .events import router as events_router
 from .delivery_targets import router as delivery_targets_router
 from .route_management import router as routes_management_router
 from .replay_jobs import router as replay_jobs_router
-
+from .dashboard import router as dashboard_router
 from .auth import router as auth_router
 from .aggregation import router as aggregation_router
 from .usage import router as usage_router
@@ -93,6 +93,9 @@ app.include_router(aggregation_router)
 app.include_router(integrations_router)
 app.include_router(tunnel_gateway_router)
 app.include_router(tunnel_proxy_router)
+app.include_router(dashboard_router)
+
+
 
 # -----------------------------
 # WebSocket Endpoints
