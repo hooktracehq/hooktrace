@@ -31,7 +31,7 @@ const actions = [
 
   {
     label: "Inspect DLQ",
-    href: "/issues",
+    href: "/dlq",
     icon: ShieldAlert,
   },
 ]

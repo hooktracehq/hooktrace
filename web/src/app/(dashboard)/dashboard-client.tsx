@@ -1,549 +1,909 @@
+// "use client"
+
+// import { useEffect, useState } from "react"
+
+// import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
+// import { ThroughputChart } from "@/components/dashboard/throughput-chart"
+// import { RecentEvents } from "@/components/dashboard/recent-events"
+// import { RecentFailures } from "@/components/dashboard/recent-failures"
+// import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown"
+// import { InfrastructureOverview } from "@/components/dashboard/infrastructure-overview"
+
+// type DashboardStats = {
+//   incoming: number
+//   delivered: number
+//   failed: number
+//   retries: number
+//   dlq: number
+//   avg_latency_ms: number
+// }
+
+// type DashboardEvent = {
+//   id: number
+//   provider: string
+//   event_type: string
+//   status: string
+//   route: string
+//   latency_ms: number | null
+//   attempt_count: number
+//   retry_count: number
+//   last_error: string | null
+//   created_at: string
+// }
+
+// type DashboardFailure = DashboardEvent
+
+// type DashboardProvider = {
+//   name: string
+//   count: number
+//   percentage: number
+// }
+
+// type Infrastructure = {
+//   connections: {
+//     total: number
+//     healthy: number
+//     errors: number
+//   }
+
+//   routes: {
+//     total: number
+//   }
+
+//   destinations: {
+//     total: number
+//     healthy: number
+//     paused: number
+//     delivered: number
+//     failed: number
+//   }
+
+//   aggregation: {
+//     total: number
+//     enabled: number
+//     events_processed: number
+//     batches_created: number
+//     duplicates_skipped: number
+//   }
+
+//   tunnels: {
+//     total: number
+//     active: number
+//     inactive: number
+//     requests: number
+//   }
+// }
+
+// type ActivityPoint = {
+//   timestamp: number
+//   success: number
+//   failure: number
+// }
+
+// type DashboardResponse = {
+//   stats: DashboardStats
+//   activity: ActivityPoint[]
+//   providers: DashboardProvider[]
+//   infrastructure: Infrastructure
+//   recent_events: DashboardEvent[]
+//   recent_failures: DashboardFailure[]
+// }
+
+// export function DashboardClient() {
+//   const [data, setData] =
+//     useState<DashboardResponse | null>(null)
+
+//   const [loading, setLoading] =
+//     useState(true)
+
+//   const [error, setError] =
+//     useState<string | null>(null)
+
+//   useEffect(() => {
+//     let cancelled = false
+
+//     async function loadDashboard() {
+//       try {
+//         setLoading(true)
+//         setError(null)
+
+//         const response = await fetch(
+//           `${process.env.NEXT_PUBLIC_API_URL}/dashboard/overview`,
+//           {
+//             method: "GET",
+//             credentials: "include",
+//             headers: {
+//               Accept: "application/json",
+//             },
+//             cache: "no-store",
+//           }
+//         )
+
+//         if (!response.ok) {
+//           throw new Error(
+//             `Dashboard request failed (${response.status})`
+//           )
+//         }
+
+//         const result =
+//           (await response.json()) as DashboardResponse
+
+//         if (!cancelled) {
+//           setData(result)
+//         }
+//       } catch (err) {
+//         if (!cancelled) {
+//           setError(
+//             err instanceof Error
+//               ? err.message
+//               : "Unable to load dashboard"
+//           )
+//         }
+//       } finally {
+//         if (!cancelled) {
+//           setLoading(false)
+//         }
+//       }
+//     }
+
+//     loadDashboard()
+
+//     return () => {
+//       cancelled = true
+//     }
+//   }, [])
+
+//   if (loading && !data) {
+//     return (
+//       <div className="space-y-6">
+//         <div className="h-24 animate-pulse rounded-2xl border border-border bg-surface-1" />
+
+//         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+//           {Array.from({ length: 6 }).map((_, index) => (
+//             <div
+//               key={index}
+//               className="h-36 animate-pulse rounded-2xl border border-border bg-surface-1"
+//             />
+//           ))}
+//         </div>
+
+//         <div className="h-[390px] animate-pulse rounded-2xl border border-border bg-surface-1" />
+//       </div>
+//     )
+//   }
+
+//   if (error && !data) {
+//     return (
+//       <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] p-6">
+//         <p className="text-sm font-medium text-rose-400">
+//           Unable to load dashboard
+//         </p>
+
+//         <p className="mt-1 text-xs text-muted-foreground">
+//           {error}
+//         </p>
+//       </div>
+//     )
+//   }
+
+//   if (!data) {
+//     return null
+//   }
+
+//   return (
+//     <div className="space-y-6">
+//       <DashboardOverview
+//         stats={data.stats}
+//       />
+
+//       <ThroughputChart
+//         activity={data.activity}
+//       />
+
+//       <div className="grid grid-cols-12 gap-6">
+//         <div className="col-span-12 xl:col-span-7">
+//           <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
+//             <RecentEvents
+//               events={data.recent_events}
+//             />
+//           </div>
+//         </div>
+
+//         <div className="col-span-12 xl:col-span-5">
+//           <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
+//             <RecentFailures
+//               failures={data.recent_failures}
+//             />
+//           </div>
+//         </div>
+//       </div>
+
+//       <div className="grid grid-cols-12 gap-6">
+//         <div className="col-span-12 xl:col-span-5">
+//           <ProviderBreakdown
+//             providers={data.providers}
+//           />
+//         </div>
+
+//         <div className="col-span-12 xl:col-span-7">
+//           <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
+//             <InfrastructureOverview
+//               infrastructure={
+//                 data.infrastructure
+//               }
+//             />
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   )
+// }
+
+
+
+
+// "use client"
+
+// import { useCallback, useEffect, useState } from "react"
+// import { motion, useReducedMotion } from "framer-motion"
+
+// import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
+// import { ThroughputChart } from "@/components/dashboard/throughput-chart"
+// import { RecentEvents } from "@/components/dashboard/recent-events"
+// import { RecentFailures } from "@/components/dashboard/recent-failures"
+// import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown"
+// import { InfrastructureOverview } from "@/components/dashboard/infrastructure-overview"
+
+// type DashboardStats = {
+//   incoming: number
+//   delivered: number
+//   failed: number
+//   retries: number
+//   dlq: number
+//   avg_latency_ms: number
+// }
+
+// type DashboardEvent = {
+//   id: number
+//   provider: string
+//   event_type: string
+//   status: string
+//   route: string
+//   latency_ms: number | null
+//   attempt_count: number
+//   retry_count: number
+//   last_error: string | null
+//   created_at: string
+// }
+
+// type DashboardFailure = DashboardEvent
+
+// type DashboardProvider = {
+//   name: string
+//   count: number
+//   percentage: number
+// }
+
+// type Infrastructure = {
+//   connections: {
+//     total: number
+//     healthy: number
+//     errors: number
+//   }
+
+//   routes: {
+//     total: number
+//   }
+
+//   destinations: {
+//     total: number
+//     healthy: number
+//     paused: number
+//     delivered: number
+//     failed: number
+//   }
+
+//   aggregation: {
+//     total: number
+//     enabled: number
+//     events_processed: number
+//     batches_created: number
+//     duplicates_skipped: number
+//   }
+
+//   tunnels: {
+//     total: number
+//     active: number
+//     inactive: number
+//     requests: number
+//   }
+// }
+
+// type ActivityPoint = {
+//   timestamp: number
+//   success: number
+//   failure: number
+// }
+
+// type DashboardResponse = {
+//   stats: DashboardStats
+//   activity: ActivityPoint[]
+//   providers: DashboardProvider[]
+//   infrastructure: Infrastructure
+//   recent_events: DashboardEvent[]
+//   recent_failures: DashboardFailure[]
+// }
+
+// // Mirrors the true layout below (KPI row -> chart -> events/failures ->
+// // provider/infra) so the loading state doesn't jump or reflow once data
+// // arrives.
+// function DashboardSkeleton() {
+//   return (
+//     <div className="space-y-6">
+//       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+//         {Array.from({ length: 6 }).map((_, index) => (
+//           <div
+//             key={index}
+//             className="h-36 animate-pulse rounded-2xl border border-border bg-surface-1"
+//           />
+//         ))}
+//       </div>
+
+//       <div className="h-[390px] animate-pulse rounded-2xl border border-border bg-surface-1" />
+
+//       <div className="grid grid-cols-12 gap-6">
+//         <div className="col-span-12 h-[360px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-7" />
+//         <div className="col-span-12 h-[360px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-5" />
+//       </div>
+
+//       <div className="grid grid-cols-12 gap-6">
+//         <div className="col-span-12 h-[280px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-5" />
+//         <div className="col-span-12 h-[280px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-7" />
+//       </div>
+//     </div>
+//   )
+// }
+
+// const sectionVariants = {
+//   hidden: { opacity: 0, y: 8 },
+//   visible: { opacity: 1, y: 0 },
+// }
+
+// export function DashboardClient() {
+//   const [data, setData] =
+//     useState<DashboardResponse | null>(null)
+
+//   const [loading, setLoading] =
+//     useState(true)
+
+//   const [error, setError] =
+//     useState<string | null>(null)
+
+//   const prefersReducedMotion = useReducedMotion()
+
+//   const loadDashboard = useCallback(async () => {
+//     try {
+//       setLoading(true)
+//       setError(null)
+
+//       const response = await fetch(
+//         `${process.env.NEXT_PUBLIC_API_URL}/dashboard/overview`,
+//         {
+//           method: "GET",
+//           credentials: "include",
+//           headers: {
+//             Accept: "application/json",
+//           },
+//           cache: "no-store",
+//         }
+//       )
+
+//       if (!response.ok) {
+//         throw new Error(
+//           `Dashboard request failed (${response.status})`
+//         )
+//       }
+
+//       const result =
+//         (await response.json()) as DashboardResponse
+
+//       setData(result)
+//     } catch (err) {
+//       setError(
+//         err instanceof Error
+//           ? err.message
+//           : "Unable to load dashboard"
+//       )
+//     } finally {
+//       setLoading(false)
+//     }
+//   }, [])
+
+//   useEffect(() => {
+//     let cancelled = false
+
+//     async function run() {
+//       await loadDashboard()
+//       if (cancelled) return
+//     }
+
+//     run()
+
+//     return () => {
+//       cancelled = true
+//     }
+//   }, [loadDashboard])
+
+//   if (loading && !data) {
+//     return <DashboardSkeleton />
+//   }
+
+//   if (error && !data) {
+//     return (
+//       <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] p-6 text-center">
+//         <p className="text-sm font-medium text-rose-400">
+//           Unable to load dashboard
+//         </p>
+
+//         <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+//           {error}
+//         </p>
+
+//         <button
+//           type="button"
+//           onClick={loadDashboard}
+//           className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50"
+//         >
+//           Try again
+//         </button>
+//       </div>
+//     )
+//   }
+
+//   if (!data) {
+//     return null
+//   }
+
+//   // Refetches quietly on retry after a transient error, without dropping
+//   // the last good data or forcing the page back into a full skeleton.
+//   const staleNotice = error ? (
+//     <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] px-4 py-2.5 text-xs text-orange-300">
+//       <span>Showing last loaded data — {error}</span>
+
+//       <button
+//         type="button"
+//         onClick={loadDashboard}
+//         className="shrink-0 font-medium underline decoration-dotted underline-offset-2 hover:text-orange-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50"
+//       >
+//         Retry
+//       </button>
+//     </div>
+//   ) : null
+
+//   return (
+//     <div className="space-y-6">
+//       {staleNotice}
+
+//       <motion.div
+//         initial={prefersReducedMotion ? false : "hidden"}
+//         animate="visible"
+//         variants={sectionVariants}
+//         transition={{ duration: 0.2 }}
+//       >
+//         <DashboardOverview
+//           stats={data.stats}
+//         />
+//       </motion.div>
+
+//       <motion.div
+//         initial={prefersReducedMotion ? false : "hidden"}
+//         animate="visible"
+//         variants={sectionVariants}
+//         transition={{ duration: 0.2, delay: 0.05 }}
+//       >
+//         <ThroughputChart
+//           activity={data.activity}
+//         />
+//       </motion.div>
+
+//       <motion.div
+//         className="grid grid-cols-12 gap-6"
+//         initial={prefersReducedMotion ? false : "hidden"}
+//         animate="visible"
+//         variants={sectionVariants}
+//         transition={{ duration: 0.2, delay: 0.1 }}
+//       >
+//         <div className="col-span-12 xl:col-span-7">
+//           <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
+//             <RecentEvents
+//               events={data.recent_events}
+//             />
+//           </div>
+//         </div>
+
+//         <div className="col-span-12 xl:col-span-5">
+//           <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
+//             <RecentFailures
+//               failures={data.recent_failures}
+//             />
+//           </div>
+//         </div>
+//       </motion.div>
+
+//       <motion.div
+//         className="grid grid-cols-12 gap-6"
+//         initial={prefersReducedMotion ? false : "hidden"}
+//         animate="visible"
+//         variants={sectionVariants}
+//         transition={{ duration: 0.2, delay: 0.15 }}
+//       >
+//         <div className="col-span-12 xl:col-span-5">
+//           <ProviderBreakdown
+//             providers={data.providers}
+//           />
+//         </div>
+
+//         <div className="col-span-12 xl:col-span-7">
+//           <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
+//             <InfrastructureOverview
+//               infrastructure={
+//                 data.infrastructure
+//               }
+//             />
+//           </div>
+//         </div>
+//       </motion.div>
+//     </div>
+//   )
+// }
+
+
+
+
+
+
+
+
+
 "use client"
 
-import {
-  AlertTriangle,
-  CheckCircle2,
-} from "lucide-react"
-
-import { motion } from "framer-motion"
-
-import { cn } from "@/lib/utils"
-
-import { useWebhookStream } from "@/hooks/streams/useWebhookStream"
-import {
-  useDashboardOverview,
-} from "@/hooks/dashboard/use-dashboard-overview"
+import { useCallback, useEffect, useState } from "react"
+import { motion, useReducedMotion } from "framer-motion"
 
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
 import { ThroughputChart } from "@/components/dashboard/throughput-chart"
-import { RecentFailures } from "@/components/dashboard/recent-failures"
 import { RecentEvents } from "@/components/dashboard/recent-events"
+import { RecentFailures } from "@/components/dashboard/recent-failures"
 import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown"
-import { InfraHealth } from "@/components/dashboard/infra-health"
+import { InfrastructureOverview } from "@/components/dashboard/infrastructure-overview"
 
-export default function DashboardClient() {
-  const {
-    data,
-    loading,
-    error,
-  } = useDashboardOverview()
+type DashboardStats = {
+  incoming: number
+  delivered: number
+  failed: number
+  retries: number
+  dlq: number
+  avg_latency_ms: number
+}
 
-  const {
-    events: liveEvents = [],
-    status,
-    connected,
-  } = useWebhookStream("/ws/events")
+export type DashboardEvent = {
+  id: number
+  provider: string
+  event_type: string
+  status: string
+  route: string
+  latency_ms: number | null
+  attempt_count: number
+  retry_count: number
+  last_error: string | null
+  created_at: string
+}
 
-  /*
-   * -----------------------------------------
-   * Loading
-   * -----------------------------------------
-   */
+export type DashboardFailure = DashboardEvent
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[70vh] w-full items-center justify-center">
-        <div className="w-full max-w-md px-6">
-          <div className="space-y-3">
-            <div className="h-7 w-32 animate-pulse rounded-md bg-white/[0.05]" />
+type DashboardProvider = {
+  name: string
+  count: number
+  percentage: number
+}
 
-            <div className="h-4 w-64 animate-pulse rounded-md bg-white/[0.04]" />
-
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
-              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
-              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
-              <div className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+type Infrastructure = {
+  connections: {
+    total: number
+    healthy: number
+    errors: number
   }
 
-  /*
-   * -----------------------------------------
-   * Error
-   * -----------------------------------------
-   */
+  routes: {
+    total: number
+  }
 
-  if (error || !data) {
+  destinations: {
+    total: number
+    healthy: number
+    paused: number
+    delivered: number
+    failed: number
+  }
+
+  aggregation: {
+    total: number
+    enabled: number
+    events_processed: number
+    batches_created: number
+    duplicates_skipped: number
+  }
+
+  tunnels: {
+    total: number
+    active: number
+    inactive: number
+    requests: number
+  }
+}
+
+type ActivityPoint = {
+  timestamp: number
+  success: number
+  failure: number
+}
+
+type DashboardResponse = {
+  stats: DashboardStats
+  activity: ActivityPoint[]
+  providers: DashboardProvider[]
+  infrastructure?: Infrastructure | null
+  recent_events: DashboardEvent[]
+  recent_failures: DashboardFailure[]
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-36 animate-pulse rounded-2xl border border-border bg-surface-1"
+          />
+        ))}
+      </div>
+
+      <div className="h-[390px] animate-pulse rounded-2xl border border-border bg-surface-1" />
+
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 h-[360px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-7" />
+
+        <div className="col-span-12 h-[360px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-5" />
+      </div>
+
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 h-[280px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-5" />
+
+        <div className="col-span-12 h-[280px] animate-pulse rounded-2xl border border-border bg-surface-1 xl:col-span-7" />
+      </div>
+    </div>
+  )
+}
+
+const sectionVariants = {
+  hidden: {
+    opacity: 0,
+    y: 8,
+  },
+
+  visible: {
+    opacity: 1,
+    y: 0,
+  },
+}
+
+export function DashboardClient() {
+  const [data, setData] =
+    useState<DashboardResponse | null>(null)
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [error, setError] =
+    useState<string | null>(null)
+
+  const prefersReducedMotion =
+    useReducedMotion()
+
+  const loadDashboard = useCallback(
+    async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/dashboard/overview`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              Accept: "application/json",
+            },
+            cache: "no-store",
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error(
+            `Dashboard request failed (${response.status})`
+          )
+        }
+
+        const result =
+          (await response.json()) as DashboardResponse
+
+        setData(result)
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load dashboard"
+        )
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
+
+  if (loading && !data) {
+    return <DashboardSkeleton />
+  }
+
+  if (error && !data) {
     return (
-      <div className="w-full px-6 py-8">
-        <div
-          className="
-            rounded-2xl
-            border
-            border-rose-500/20
-            bg-rose-500/[0.04]
-            p-6
-          "
+      <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] p-6 text-center">
+        <p className="text-sm font-medium text-rose-400">
+          Unable to load dashboard
+        </p>
+
+        <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+          {error}
+        </p>
+
+        <button
+          type="button"
+          onClick={loadDashboard}
+          className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/20"
         >
-          <div className="flex items-start gap-3">
-            <div
-              className="
-                flex
-                h-9
-                w-9
-                shrink-0
-                items-center
-                justify-center
-                rounded-full
-                bg-rose-500/10
-              "
-            >
-              <AlertTriangle className="h-4 w-4 text-rose-400" />
-            </div>
-
-            <div>
-              <p className="text-sm font-medium">
-                Unable to load dashboard
-              </p>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                {error || "No dashboard data available."}
-              </p>
-            </div>
-          </div>
-        </div>
+          Try again
+        </button>
       </div>
     )
   }
 
-  /*
-   * -----------------------------------------
-   * Safe backend data
-   * -----------------------------------------
-   */
+  if (!data) {
+    return null
+  }
 
-  const stats = data.stats ?? {}
+  const staleNotice = error ? (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] px-4 py-2.5 text-xs text-orange-300">
+      <span>
+        Showing last loaded data — {error}
+      </span>
 
-  const recentEvents = Array.isArray(data.recent_events)
-    ? data.recent_events
-    : []
-
-  const recentFailures = Array.isArray(data.recent_failures)
-    ? data.recent_failures
-    : []
-
-  const activity = Array.isArray(data.activity)
-    ? data.activity
-    : []
-
-  const safeLiveEvents = Array.isArray(liveEvents)
-    ? liveEvents
-    : []
-
-  /*
-   * -----------------------------------------
-   * Merge REST + WebSocket events
-   * -----------------------------------------
-   */
-
-  const existingEventIds = new Set(
-    recentEvents.map((event) => String(event.id))
-  )
-
-  const newLiveEvents = safeLiveEvents.filter(
-    (event) =>
-      !existingEventIds.has(String(event.id))
-  )
-
-  /*
-   * -----------------------------------------
-   * Live statistics
-   * -----------------------------------------
-   */
-
-  const liveIncoming =
-    Number(stats.incoming ?? 0) +
-    newLiveEvents.length
-
-  const liveDelivered =
-    Number(stats.delivered ?? 0) +
-    newLiveEvents.filter(
-      (event) => event.status === "delivered"
-    ).length
-
-  const liveFailed =
-    Number(stats.failed ?? 0) +
-    newLiveEvents.filter(
-      (event) => event.status === "failed"
-    ).length
-
-  const liveRetries =
-    Number(stats.retries ?? 0)
-
-  const liveDlq =
-    Number(stats.dlq ?? 0)
-
-  const liveLatency =
-    Number(stats.avg_latency_ms ?? 0)
-
-  const successRate =
-    liveIncoming > 0
-      ? (liveDelivered / liveIncoming) * 100
-      : 100
-
-  const healthy =
-    successRate >= 95 &&
-    liveDlq === 0
-
-  /*
-   * -----------------------------------------
-   * Combined events
-   * -----------------------------------------
-   */
-
-  const mergedEvents = [
-    ...newLiveEvents,
-    ...recentEvents,
-  ]
-    .filter(
-      (event, index, array) =>
-        array.findIndex(
-          (item) =>
-            String(item.id) ===
-            String(event.id)
-        ) === index
-    )
-    .slice(0, 10)
+      <button
+        type="button"
+        onClick={loadDashboard}
+        className="shrink-0 font-medium underline decoration-dotted underline-offset-2 hover:text-orange-200"
+      >
+        Retry
+      </button>
+    </div>
+  ) : null
 
   return (
-    <div className="w-full min-w-0">
+    <div className="space-y-6">
+      {staleNotice}
 
-      {/* ===================================== */}
-      {/* Header */}
-      {/* ===================================== */}
-
-      <header
-        className="
-          border-b
-          border-border
-          bg-background/80
-          backdrop-blur-xl
-        "
+      <motion.div
+        initial={
+          prefersReducedMotion
+            ? false
+            : "hidden"
+        }
+        animate="visible"
+        variants={sectionVariants}
+        transition={{
+          duration: 0.2,
+        }}
       >
-        <div
-          className="
-            flex
-            w-full
-            items-center
-            justify-between
-            gap-4
-            px-4
-            py-5
-            sm:px-6
-            lg:px-8
-          "
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold tracking-tight">
-                Dashboard
-              </h1>
+        <DashboardOverview
+          stats={data.stats}
+        />
+      </motion.div>
 
-              <div
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium",
-                  connected
-                    ? "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400"
-                    : "border-border bg-white/[0.02] text-muted-foreground"
-                )}
-              >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    connected
-                      ? "animate-pulse bg-emerald-400"
-                      : "bg-zinc-500"
-                  )}
-                />
+      <motion.div
+        initial={
+          prefersReducedMotion
+            ? false
+            : "hidden"
+        }
+        animate="visible"
+        variants={sectionVariants}
+        transition={{
+          duration: 0.2,
+          delay: 0.05,
+        }}
+      >
+        <div className="rounded-2xl border border-border bg-surface-1 p-6">
+          <ThroughputChart
+            activity={data.activity}
+          />
+        </div>
+      </motion.div>
 
-                {connected ? "Live" : status}
-              </div>
-            </div>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Monitor your webhook infrastructure
-            </p>
-          </div>
-
-          <div className="hidden text-right sm:block">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Delivery success
-            </p>
-
-            <p className="mt-0.5 text-sm font-semibold">
-              {successRate.toFixed(1)}%
-            </p>
+      <motion.div
+        className="grid grid-cols-12 gap-6"
+        initial={
+          prefersReducedMotion
+            ? false
+            : "hidden"
+        }
+        animate="visible"
+        variants={sectionVariants}
+        transition={{
+          duration: 0.2,
+          delay: 0.1,
+        }}
+      >
+        <div className="col-span-12 xl:col-span-7">
+          <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
+            <RecentEvents
+              events={data.recent_events}
+            />
           </div>
         </div>
-      </header>
 
-      {/* ===================================== */}
-      {/* Main Dashboard */}
-      {/* ===================================== */}
-
-      <main
-        className="
-          w-full
-          min-w-0
-          space-y-6
-          px-4
-          py-6
-          sm:px-6
-          lg:px-8
-        "
-      >
-
-        {/* ================================= */}
-        {/* Health */}
-        {/* ================================= */}
-
-        <motion.section
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={cn(
-            "flex w-full min-w-0 flex-col gap-4 rounded-2xl border px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
-            healthy
-              ? "border-emerald-500/20 bg-emerald-500/[0.035]"
-              : "border-rose-500/20 bg-rose-500/[0.035]"
-          )}
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                healthy
-                  ? "bg-emerald-500/10"
-                  : "bg-rose-500/10"
-              )}
-            >
-              {healthy ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 text-rose-400" />
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <p className="text-sm font-medium">
-                {healthy
-                  ? "All systems operational"
-                  : "Attention required"}
-              </p>
-
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {healthy
-                  ? "Webhook deliveries are processing normally."
-                  : `${liveFailed} delivery ${
-                      liveFailed === 1
-                        ? "failure"
-                        : "failures"
-                    } detected.`}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-5">
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Success
-              </p>
-
-              <p className="mt-0.5 text-sm font-semibold">
-                {successRate.toFixed(1)}%
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Latency
-              </p>
-
-              <p className="mt-0.5 text-sm font-semibold">
-                {liveLatency}ms
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                DLQ
-              </p>
-
-              <p
-                className={cn(
-                  "mt-0.5 text-sm font-semibold",
-                  liveDlq > 0
-                    ? "text-rose-400"
-                    : "text-foreground"
-                )}
-              >
-                {liveDlq}
-              </p>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* ================================= */}
-        {/* KPI */}
-        {/* ================================= */}
-
-        <section className="w-full min-w-0">
-          <DashboardOverview
-            stats={{
-              incoming: liveIncoming,
-              delivered: liveDelivered,
-              failed: liveFailed,
-              retries: liveRetries,
-              dlq: liveDlq,
-              avg_latency_ms: liveLatency,
-            }}
-          />
-        </section>
-
-        {/* ================================= */}
-        {/* Throughput */}
-        {/* ================================= */}
-
-        <motion.section
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="
-            block
-            w-full
-            min-w-0
-            overflow-hidden
-            rounded-2xl
-            border
-            border-border
-            bg-surface-1
-            p-5
-            sm:p-6
-          "
-        >
-          <div className="w-full min-w-0">
-            <ThroughputChart
-              activity={activity}
-            />
-          </div>
-        </motion.section>
-
-        {/* ================================= */}
-        {/* Recent Events + Failures */}
-        {/* ================================= */}
-
-        <section
-          className="
-            grid
-            w-full
-            min-w-0
-            grid-cols-1
-            gap-6
-            xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.8fr)]
-          "
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.14 }}
-            className="
-              min-w-0
-              w-full
-              overflow-hidden
-              rounded-2xl
-              border
-              border-border
-              bg-surface-1
-              p-5
-              sm:p-6
-            "
-          >
-            <RecentEvents
-              events={mergedEvents}
-            />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.18 }}
-            className="
-              min-w-0
-              w-full
-              overflow-hidden
-              rounded-2xl
-              border
-              border-border
-              bg-surface-1
-              p-5
-              sm:p-6
-            "
-          >
+        <div className="col-span-12 xl:col-span-5">
+          <div className="h-full rounded-2xl border border-border bg-surface-1 p-6">
             <RecentFailures
-              failures={recentFailures}
+              failures={data.recent_failures}
             />
-          </motion.div>
-        </section>
+          </div>
+        </div>
+      </motion.div>
 
-        {/* ================================= */}
-        {/* Provider + Infrastructure */}
-        {/* ================================= */}
+      <motion.div
+        className="grid grid-cols-12 gap-6"
+        initial={
+          prefersReducedMotion
+            ? false
+            : "hidden"
+        }
+        animate="visible"
+        variants={sectionVariants}
+        transition={{
+          duration: 0.2,
+          delay: 0.15,
+        }}
+      >
+        <div className="col-span-12 xl:col-span-5">
+          <ProviderBreakdown
+            providers={data.providers}
+          />
+        </div>
 
-        <section
-          className="
-            grid
-            w-full
-            min-w-0
-            grid-cols-1
-            gap-6
-            lg:grid-cols-2
-          "
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.22 }}
-            className="
-              min-w-0
-              w-full
-              overflow-hidden
-              rounded-2xl
-              border
-              border-border
-              bg-surface-1
-              p-5
-              sm:p-6
-            "
-          >
-            <ProviderBreakdown
-              events={mergedEvents}
+        {data.infrastructure && (
+          <div className="col-span-12 xl:col-span-7">
+            <InfrastructureOverview
+              infrastructure={
+                data.infrastructure
+              }
             />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.26 }}
-            className="
-              min-w-0
-              w-full
-              overflow-hidden
-              rounded-2xl
-              border
-              border-border
-              bg-surface-1
-              p-5
-              sm:p-6
-            "
-          >
-            <InfraHealth />
-          </motion.div>
-        </section>
-
-      </main>
+          </div>
+        )}
+      </motion.div>
     </div>
   )
 }
