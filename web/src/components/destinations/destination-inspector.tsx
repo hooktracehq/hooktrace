@@ -32,6 +32,13 @@ export function DestinationInspector({
   const [tab, setTab] = useState<
     "overview" | "logs" | "insights"
   >("overview")
+  
+    const {
+      data,
+      isLoading,
+    } = useDestinationLogs(destination?.id)
+  
+    const logs = data?.items ?? []
 
   if (!destination) {
     return (
@@ -40,13 +47,6 @@ export function DestinationInspector({
       </div>
     )
   }
-
-  const {
-    data,
-    isLoading,
-  } = useDestinationLogs(destination.id)
-
-  const logs = data?.items ?? []
 
   const endpoint =
     (destination.config.url as string) ??
