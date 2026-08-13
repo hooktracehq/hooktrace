@@ -1,5 +1,7 @@
 import { create } from "zustand"
 
+import type { Event } from "@/types/event"
+
 type EventsStore = {
   selectedEventId: number | null
 
@@ -8,6 +10,7 @@ type EventsStore = {
 
   bufferedEvents: Event[]
 
+  addEvent: (event: Event) => void
   flushBuffer: () => void
 
   selectEvent: (id: number | null) => void
@@ -26,10 +29,15 @@ export const useEventsStore = create<EventsStore>((set) => ({
 
   bufferedEvents: [],
 
-  flushBuffer: () =>
+  addEvent: (event) =>
     set((state) => ({
-      bufferedEvents: [],
+      bufferedEvents: [...state.bufferedEvents, event],
     })),
+
+  flushBuffer: () =>
+    set({
+      bufferedEvents: [],
+    }),
 
   selectEvent: (id) =>
     set({
