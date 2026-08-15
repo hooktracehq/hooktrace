@@ -1,93 +1,47 @@
 import { cookies } from "next/headers"
- 
+
 export type User = {
   id: string
   email: string
-  avatar_url?: string
-  name?: string
+  avatar_url?: string | null
+  name?: string | null
+  provider?: string | null
 }
- 
-// export async function getCurrentUser(): Promise<User | null> {
-//   const cookieStore = await cookies()
-//   const accessToken = cookieStore.get("access_token")
- 
-//   if (!accessToken) {
-//     return null
-//   }
- 
-//   try {
-//     // Call your backend to verify token and get user
-//     const response = await fetch("http://localhost:3001/auth/me", {
-//       headers: {
-//         Cookie: `access_token=${accessToken.value}`,
-//       },
-//       credentials: "include",
-//     })
- 
-//     if (!response.ok) {
-//       return null
-//     }
- 
-//     const user = await response.json()
-//     return user
-//   } catch (error) {
-//     console.error("Failed to get current user:", error)
-//     return null
-//   }
-// }
 
-
-
-
-// export async function getCurrentUser(): Promise<User | null> {
-//     try {
-//       const cookieHeader = cookies().toString()
-  
-//       const response = await fetch("http://localhost:3001/auth/me", {
-//         headers: {
-//           cookie: cookieHeader,
-//         },
-//         cache: "no-store",
-//       })
-  
-//       if (!response.ok) return null
-  
-//       return await response.json()
-//     } catch (err) {
-//       console.error(err)
-//       return null
-//     }
-//   }
-
-
-
-
-
-
-
-
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3001"
 
 export async function getCurrentUser(): Promise<User | null> {
-    try {
-      const cookieStore = await cookies()
-  
-      const cookieHeader = cookieStore
-        .getAll()
-        .map(c => `${c.name}=${c.value}`)
-        .join("; ")
-  
-      const response = await fetch("http://localhost:3001/auth/me", {
+  try {
+    const cookieStore = await cookies()
+
+    const cookieHeader = cookieStore
+      .getAll()
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join("; ")
+
+    const response = await fetch(
+      `${API_URL}/auth/me`,
+      {
         headers: {
-          cookie: cookieHeader,
+          Cookie: cookieHeader,
         },
         cache: "no-store",
-      })
-  
-      if (!response.ok) return null
-  
-      return await response.json()
-    } catch (error) {
-      console.error("Failed to get current user:", error)
+      }
+    )
+
+    if (!response.ok) {
       return null
     }
+
+    return (await response.json()) as User
+  } catch (error) {
+    console.error(
+      "Failed to get current user:",
+      error
+    )
+
+    return null
   }
+}

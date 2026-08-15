@@ -199,7 +199,14 @@ def login(data: LoginSchema):
 @router.post("/logout")
 def logout():
     response = JSONResponse({"success": True})
-    response.delete_cookie("access_token")
+
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=False,  # True in production
+        samesite="lax",
+    )
+
     return response
 
 
