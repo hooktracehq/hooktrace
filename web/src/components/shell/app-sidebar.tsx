@@ -21,7 +21,6 @@ import {
   ShieldAlert,
   UserRound,
   Waypoints,
-  Workflow,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -47,11 +46,6 @@ const sections = [
         label: "Events",
         href: "/events",
         icon: Activity,
-      },
-      {
-        label: "Streams",
-        href: "/streams",
-        icon: Radio,
       },
     ],
   },
@@ -86,9 +80,9 @@ const sections = [
     title: "Realtime",
     items: [
       {
-        label: "Live Stream",
-        href: "/live",
-        icon: Workflow,
+        label: "Streams",
+        href: "/streams",
+        icon: Radio,
       },
       {
         label: "Tunnels",
@@ -321,7 +315,7 @@ export function AppSidebar() {
 
             <div className="my-1 border-t border-border" />
 
-            {/* Existing logout component */}
+            {/* Logout */}
             <LogoutButton />
           </div>
         )}
