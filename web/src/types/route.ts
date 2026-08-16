@@ -1,12 +1,22 @@
-export type Route = {
+export type RouteMode = "dev" | "prod"
+
+export type RouteStatus =
+  | "active"
+  | "paused"
+  | "error"
+
+  export type Route = {
     id: string
+  
+    token: string
+  
     path: string
+  
     provider: string
   
-    status:
-      | "active"
-      | "paused"
-      | "error"
+    mode: "dev" | "prod"
+  
+    status: "active" | "paused" | "error"
   
     throughput: number
   
@@ -14,5 +24,13 @@ export type Route = {
   
     destinations: number
   
-    lastSeen: string
+    lastSeen: string | null
+  
+    devTarget?: string | null
+  
+    prodTarget?: string | null
+  
+    secret?: string | null
+  
+    createdAt?: string | null
   }

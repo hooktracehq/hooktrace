@@ -1,6 +1,6 @@
 "use client"
 
-import { Route } from "@/types/route"
+import type { Route } from "@/types/route"
 
 type Props = {
   routes: Route[]
@@ -9,44 +9,45 @@ type Props = {
 export function RoutesStats({
   routes,
 }: Props) {
-  const active =
-    routes.filter(
-      (r) => r.status === "active"
-    ).length
+  const total = routes.length
 
-  const paused =
-    routes.filter(
-      (r) => r.status === "paused"
-    ).length
+  const dev = routes.filter(
+    (route) => route.mode === "dev"
+  ).length
 
-  const errors =
-    routes.filter(
-      (r) => r.status === "error"
-    ).length
+  const production = routes.filter(
+    (route) => route.mode === "prod"
+  ).length
+
+  const configured = routes.filter(
+    (route) =>
+      Boolean(
+        route.devTarget ||
+        route.prodTarget
+      )
+  ).length
 
   return (
     <div className="grid grid-cols-4 border-b border-border">
-
       <Stat
         label="Total Routes"
-        value={routes.length}
+        value={total}
       />
 
       <Stat
-        label="Active"
-        value={active}
+        label="Development"
+        value={dev}
       />
 
       <Stat
-        label="Paused"
-        value={paused}
+        label="Production"
+        value={production}
       />
 
       <Stat
-        label="Errors"
-        value={errors}
+        label="Configured"
+        value={configured}
       />
-
     </div>
   )
 }
@@ -64,7 +65,7 @@ function Stat({
         {label}
       </p>
 
-      <h3 className="mt-2 text-4xl font-bold">
+      <h3 className="mt-2 text-3xl font-semibold">
         {value}
       </h3>
     </div>
