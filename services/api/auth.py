@@ -366,3 +366,78 @@ def get_me(user_id: str = Depends(get_current_user)):
 
     finally:
         db.close()
+
+
+
+def get_current_user_from_token(
+    token: str | None,
+) -> str:
+    """
+    Validate a JWT token and return the authenticated user ID.
+
+    This is the WebSocket equivalent of get_current_user(),
+    since WebSocket endpoints don't use HTTP dependency injection
+    in exactly the same way as normal routes.
+    """
+
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    token = token.strip().strip('"').strip()
+
+    if token.count(".") != 2:
+        raise HTTPException(
+            status_code=401,
+            detail="Malformed token",
+        )
+
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGO],
+        )
+
+        user_id = payload.get("sub")
+
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token",
+            )
+
+        db = SessionLocal()
+
+        try:
+            user = db.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM users
+                    WHERE id = :id
+                    """
+                ),
+                {
+                    "id": user_id,
+                },
+            ).fetchone()
+
+            if not user:
+                raise HTTPException(
+                    status_code=401,
+                    detail="User not found",
+                )
+
+        finally:
+            db.close()
+
+        return str(user_id)
+
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+        )

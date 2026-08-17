@@ -59,9 +59,20 @@ export function useRealtimeSystem() {
 
       setReconnecting(true)
 
-      ws = new WebSocket(
-        "ws://localhost:3001/ws/events"
-      )
+      const apiUrl =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3001"
+
+const url = new URL(apiUrl)
+
+const protocol =
+  url.protocol === "https:"
+    ? "wss:"
+    : "ws:"
+
+ws = new WebSocket(
+  `${protocol}//${url.host}/ws/stream`
+)
 
       const started =
         performance.now()

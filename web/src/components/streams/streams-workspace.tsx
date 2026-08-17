@@ -26,7 +26,7 @@ export function StreamsWorkspace() {
   const {
     events,
     status,
-  } = useWebhookStream("/ws/events");
+  } = useWebhookStream("/ws/stream");
 
   const connected =
     status === "connected";
