@@ -44,6 +44,9 @@ def list_routes(
                     ) AS failures,
 
                     MAX(e.created_at) AS last_seen,
+                    COUNT(
+    DISTINCT rdt.target_id
+) AS destinations,
 
                     'active' AS status
 
@@ -51,6 +54,10 @@ def list_routes(
 
                 LEFT JOIN webhook_events e
                     ON e.route_id = r.id
+
+                LEFT JOIN route_delivery_targets rdt
+    ON rdt.route_id = r.id
+    AND rdt.enabled = TRUE
 
                 WHERE r.user_id = :user_id
 
@@ -98,15 +105,8 @@ def list_routes(
                         if row["last_seen"]
                         else None
                     ),
-                    "destinations": len(
-                        [
-                            target
-                            for target in [
-                                row["dev_target"],
-                                row["prod_target"],
-                            ]
-                            if target
-                        ]
+                    "destinations": int(
+                     row["destinations"] or 0
                     ),
                 }
                 for row in rows
@@ -250,6 +250,264 @@ def create_route(
             "prod_target": prod_target,
             "secret": secret,
             "tunnel_id": tunnel_id,
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as error:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        )
+
+    finally:
+        db.close()
+
+
+
+@router.get("/{route_id}/targets")
+def list_route_targets(
+    route_id: int,
+    user_id: str = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        route = db.execute(
+            text(
+                """
+                SELECT id
+                FROM webhook_routes
+                WHERE id = :route_id
+                AND user_id = :user_id
+                """
+            ),
+            {
+                "route_id": route_id,
+                "user_id": user_id,
+            },
+        ).fetchone()
+
+        if not route:
+            raise HTTPException(
+                status_code=404,
+                detail="Route not found",
+            )
+
+        rows = db.execute(
+            text(
+                """
+                SELECT
+                    dt.id,
+                    dt.name,
+                    dt.type,
+                    dt.config,
+                    dt.enabled,
+                    dt.providers,
+                    rdt.enabled AS route_enabled,
+                    rdt.created_at AS attached_at
+                FROM route_delivery_targets rdt
+                JOIN delivery_targets dt
+                    ON dt.id = rdt.target_id
+                WHERE rdt.route_id = :route_id
+                ORDER BY rdt.created_at DESC
+                """
+            ),
+            {
+                "route_id": route_id,
+            },
+        ).mappings().all()
+
+        return {
+            "items": [
+                {
+                    "id": str(row["id"]),
+                    "name": row["name"],
+                    "type": row["type"],
+                    "config": row["config"],
+                    "enabled": bool(row["enabled"]),
+                    "providers": row["providers"] or [],
+                    "route_enabled": bool(
+                        row["route_enabled"]
+                    ),
+                    "attached_at": (
+                        row["attached_at"].isoformat()
+                        if row["attached_at"]
+                        else None
+                    ),
+                }
+                for row in rows
+            ]
+        }
+
+    finally:
+        db.close()
+
+
+
+@router.post("/{route_id}/targets/{target_id}")
+def attach_target_to_route(
+    route_id: int,
+    target_id: str,
+    user_id: str = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        route = db.execute(
+            text(
+                """
+                SELECT id, provider
+                FROM webhook_routes
+                WHERE id = :route_id
+                AND user_id = :user_id
+                """
+            ),
+            {
+                "route_id": route_id,
+                "user_id": user_id,
+            },
+        ).fetchone()
+
+        if not route:
+            raise HTTPException(
+                status_code=404,
+                detail="Route not found",
+            )
+
+        target = db.execute(
+            text(
+                """
+                SELECT id, name, type, providers, enabled
+                FROM delivery_targets
+                WHERE id = :target_id
+                AND user_id = :user_id
+                """
+            ),
+            {
+                "target_id": target_id,
+                "user_id": user_id,
+            },
+        ).fetchone()
+
+        if not target:
+            raise HTTPException(
+                status_code=404,
+                detail="Delivery target not found",
+            )
+
+        existing = db.execute(
+            text(
+                """
+                SELECT id
+                FROM route_delivery_targets
+                WHERE route_id = :route_id
+                AND target_id = :target_id
+                """
+            ),
+            {
+                "route_id": route_id,
+                "target_id": target_id,
+            },
+        ).fetchone()
+
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail="Target already attached to route",
+            )
+
+        db.execute(
+            text(
+                """
+                INSERT INTO route_delivery_targets (
+                    route_id,
+                    target_id
+                )
+                VALUES (
+                    :route_id,
+                    :target_id
+                )
+                """
+            ),
+            {
+                "route_id": route_id,
+                "target_id": target_id,
+            },
+        )
+
+        db.commit()
+
+        return {
+            "success": True,
+            "route_id": route_id,
+            "target_id": target_id,
+            "target_name": target[1],
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as error:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        )
+
+    finally:
+        db.close()
+
+
+
+@router.delete("/{route_id}/targets/{target_id}")
+def detach_target_from_route(
+    route_id: int,
+    target_id: str,
+    user_id: str = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        result = db.execute(
+            text(
+                """
+                DELETE FROM route_delivery_targets
+                WHERE route_id = :route_id
+                AND target_id = :target_id
+                AND route_id IN (
+                    SELECT id
+                    FROM webhook_routes
+                    WHERE id = :route_id
+                    AND user_id = :user_id
+                )
+                """
+            ),
+            {
+                "route_id": route_id,
+                "target_id": target_id,
+                "user_id": user_id,
+            },
+        )
+
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Route-target relationship not found",
+            )
+
+        db.commit()
+
+        return {
+            "success": True,
+            "route_id": route_id,
+            "target_id": target_id,
         }
 
     except HTTPException:

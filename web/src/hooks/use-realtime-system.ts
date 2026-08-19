@@ -1,85 +1,114 @@
 "use client"
 
 import { useEffect } from "react"
-
 import { toast } from "sonner"
 
 import { useRealtimeStore } from "@/app/stores/realtime-store"
 import { useEventsStore } from "@/app/stores/events-store"
+import { useNotificationsStore } from "@/app/stores/notifications-store"
 
 import type { Event } from "@/types/event"
 
 export function useRealtimeSystem() {
+  // -------------------------------------------------
+  // Notification Store
+  // -------------------------------------------------
 
+  const addNotification =
+    useNotificationsStore(
+      (state) => state.addNotification
+    )
+
+  // -------------------------------------------------
   // Realtime Store
+  // -------------------------------------------------
+
   const setConnected =
     useRealtimeStore(
-      (s) => s.setConnected
+      (state) => state.setConnected
     )
 
   const setLatency =
     useRealtimeStore(
-      (s) => s.setLatency
+      (state) => state.setLatency
     )
 
   const setReconnecting =
     useRealtimeStore(
-      (s) => s.setReconnecting
+      (state) => state.setReconnecting
     )
 
   const addActivity =
     useRealtimeStore(
-      (s) => s.addActivity
+      (state) => state.addActivity
     )
 
+  // -------------------------------------------------
   // Events Store
+  // -------------------------------------------------
+
   const addEvent =
     useEventsStore(
-      (s) => s.addEvent
+      (state) => state.addEvent
     )
 
   const setEventsConnected =
     useEventsStore(
-      (s) => s.setConnected
+      (state) => state.setConnected
     )
 
-  useEffect(() => {
+  // -------------------------------------------------
+  // WebSocket
+  // -------------------------------------------------
 
-    let ws: WebSocket | null =
-      null
+  useEffect(() => {
+    let ws: WebSocket | null = null
 
     let reconnectTimeout:
       | NodeJS.Timeout
       | undefined
 
-    let intentionallyClosed =
-      false
+    let intentionallyClosed = false
 
     function connect() {
+      if (intentionallyClosed) {
+        return
+      }
 
       setReconnecting(true)
 
+      // -------------------------------------------------
+      // Build WebSocket URL
+      // -------------------------------------------------
+
       const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:3001"
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://localhost:3001"
 
-const url = new URL(apiUrl)
+      const url = new URL(apiUrl)
 
-const protocol =
-  url.protocol === "https:"
-    ? "wss:"
-    : "ws:"
+      const protocol =
+        url.protocol === "https:"
+          ? "wss:"
+          : "ws:"
 
-ws = new WebSocket(
-  `${protocol}//${url.host}/ws/stream`
-)
+      const websocketUrl =
+        `${protocol}//${url.host}/ws/stream`
+
+      ws = new WebSocket(
+        websocketUrl
+      )
 
       const started =
         performance.now()
 
-      ws.onopen = () => {
+      // -------------------------------------------------
+      // Connected
+      // -------------------------------------------------
 
+      ws.onopen = () => {
         setConnected(true)
+
         setEventsConnected(true)
 
         setReconnecting(false)
@@ -87,62 +116,155 @@ ws = new WebSocket(
         setLatency(
           Math.floor(
             performance.now() -
-            started
+              started
           )
         )
 
         addActivity({
           id: crypto.randomUUID(),
+
           level: "info",
+
           message:
             "realtime active",
+
           timestamp:
             new Date().toISOString(),
         })
       }
 
-      ws.onmessage = (
-        message
-      ) => {
+      // -------------------------------------------------
+      // Event received
+      // -------------------------------------------------
 
+      ws.onmessage = (message) => {
         try {
-
           const data: Event =
             JSON.parse(
               message.data
             )
 
-          // Event Stream
+          // ---------------------------------------------
+          // Store event
+          // ---------------------------------------------
+
           addEvent(data)
 
-          // Activity Feed
+          // ---------------------------------------------
+          // Activity feed
+          // ---------------------------------------------
+
           addActivity({
             id: crypto.randomUUID(),
 
             level:
-              data.status ===
-              "failed"
+              data.status === "dlq"
                 ? "error"
-                : "info",
+                : data.status === "retrying"
+                  ? "warning"
+                  : "info",
 
             message:
-              `${data.provider} ${data.event_type}`,
+              `${data.provider ?? "webhook"} ` +
+              `${data.event_type ?? "event"} ` +
+              `→ ${data.status}`,
 
             timestamp:
               new Date().toISOString(),
           })
 
-        } catch {
+          // ---------------------------------------------
+          // Notification data
+          // ---------------------------------------------
 
+          const eventId =
+            data.id
+
+          const timestamp =
+            data.created_at ??
+            new Date().toISOString()
+
+          const provider =
+            data.provider ??
+            "Webhook"
+
+          const eventType =
+            data.event_type ??
+            "event"
+
+          // ---------------------------------------------
+          // RETRYING
+          // ---------------------------------------------
+
+          if (
+            data.status ===
+            "retrying"
+          ) {
+            addNotification({
+              id: crypto.randomUUID(),
+
+              eventId,
+
+              title:
+                "Webhook delivery retrying",
+
+              message:
+                `${provider} ` +
+                `${eventType} failed ` +
+                "and will be retried",
+
+              level: "warning",
+
+              read: false,
+
+              timestamp,
+            })
+
+            return
+          }
+
+          // ---------------------------------------------
+          // DLQ
+          // ---------------------------------------------
+
+          if (
+            data.status === "dlq"
+          ) {
+            addNotification({
+              id: crypto.randomUUID(),
+
+              eventId,
+
+              title:
+                "Event moved to DLQ",
+
+              message:
+                `${provider} ` +
+                `${eventType} was moved ` +
+                "to the dead letter queue",
+
+              level: "error",
+
+              read: false,
+
+              timestamp,
+            })
+
+            return
+          }
+        } catch (error) {
           console.error(
-            "Invalid websocket payload"
+            "Invalid websocket payload:",
+            error
           )
-
         }
       }
 
-      ws.onclose = () => {
+      // -------------------------------------------------
+      // Disconnected
+      // -------------------------------------------------
 
+      ws.onclose = () => {
         if (
           intentionallyClosed
         ) {
@@ -150,6 +272,7 @@ ws = new WebSocket(
         }
 
         setConnected(false)
+
         setEventsConnected(false)
 
         setReconnecting(true)
@@ -160,22 +283,30 @@ ws = new WebSocket(
 
         addActivity({
           id: crypto.randomUUID(),
+
           level: "warning",
+
           message:
             "connection lost",
+
           timestamp:
             new Date().toISOString(),
         })
 
         reconnectTimeout =
           setTimeout(
-            connect,
+            () => {
+              connect()
+            },
             3000
           )
       }
 
-      ws.onerror = () => {
+      // -------------------------------------------------
+      // Error
+      // -------------------------------------------------
 
+      ws.onerror = () => {
         if (
           process.env.NODE_ENV ===
           "production"
@@ -184,16 +315,21 @@ ws = new WebSocket(
             "WebSocket error"
           )
         }
-
       }
     }
 
+    // -------------------------------------------------
+    // Initial connection
+    // -------------------------------------------------
+
     connect()
 
-    return () => {
+    // -------------------------------------------------
+    // Cleanup
+    // -------------------------------------------------
 
-      intentionallyClosed =
-        true
+    return () => {
+      intentionallyClosed = true
 
       ws?.close()
 
@@ -205,10 +341,10 @@ ws = new WebSocket(
         )
       }
     }
-
   }, [
     addActivity,
     addEvent,
+    addNotification,
     setConnected,
     setEventsConnected,
     setLatency,

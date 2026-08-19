@@ -285,3 +285,53 @@ class UsageMetric(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+class RouteDeliveryTarget(Base):
+    __tablename__ = "route_delivery_targets"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    route_id = Column(
+        Integer,
+        ForeignKey(
+            "webhook_routes.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    target_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "delivery_targets.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    enabled = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    route = relationship(
+        "WebhookRoute",
+        back_populates="delivery_target_links",
+    )
+
+    target = relationship(
+        "DeliveryTarget",
+        back_populates="route_links",
+    )

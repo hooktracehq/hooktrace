@@ -114,6 +114,41 @@ const sections = [
   },
 ]
 
+const pageLabels: Record<string, string> = {
+  "/events": "Events",
+  "/streams": "Streams",
+  "/connections": "Connections",
+  "/routes": "Routes",
+  "/delivery-targets": "Destinations",
+  "/bulk-aggregation": "Aggregation",
+  "/dev-mode": "Tunnels",
+  "/replay": "Replay Queue",
+  "/metrics": "Metrics",
+  "/dlq": "Issues / DLQ",
+  "/settings": "Settings",
+}
+
+function getPageLabel(pathname: string) {
+  if (pathname === "/dashboard") {
+    return ""
+  }
+
+  const exactLabel = pageLabels[pathname]
+
+  if (exactLabel) {
+    return exactLabel
+  }
+
+  const matchingPath = Object.keys(pageLabels).find(
+    (path) =>
+      pathname.startsWith(`${path}/`)
+  )
+
+  return matchingPath
+    ? pageLabels[matchingPath]
+    : ""
+}
+
 function getInitials(email?: string | null) {
   if (!email) {
     return "U"
@@ -184,6 +219,8 @@ export function AppSidebar() {
       ? `${user.provider} account`
       : "Hooktrace account"
 
+  const pageLabel = getPageLabel(pathname)
+
   return (
     <aside className="hidden w-[248px] shrink-0 border-r border-border/70 bg-sidebar lg:flex lg:flex-col">
       {/* Logo */}
@@ -203,9 +240,11 @@ export function AppSidebar() {
               Hooktrace
             </p>
 
-            <p className="text-[11px] text-muted-foreground">
-              Event Operations
-            </p>
+            {pageLabel && (
+              <p className="text-[11px] text-muted-foreground">
+                {pageLabel}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -266,10 +305,8 @@ export function AppSidebar() {
 
       {/* Account */}
       <div className="relative border-t border-border/70 p-3">
-        {/* Account menu */}
         {menuOpen && (
           <div className="absolute bottom-[calc(100%-4px)] left-3 right-3 z-50 overflow-hidden rounded-xl border border-border bg-surface-1 p-2 shadow-2xl">
-            {/* Account information */}
             <div className="px-3 py-2.5">
               <p className="truncate text-sm font-medium text-foreground">
                 {user?.email || "Account"}
@@ -282,7 +319,6 @@ export function AppSidebar() {
 
             <div className="my-1 border-t border-border" />
 
-            {/* Profile */}
             <Link
               href="/settings"
               onClick={() =>
@@ -300,7 +336,6 @@ export function AppSidebar() {
               <span>Profile</span>
             </Link>
 
-            {/* Settings */}
             <Link
               href="/settings"
               onClick={() =>
@@ -315,12 +350,10 @@ export function AppSidebar() {
 
             <div className="my-1 border-t border-border" />
 
-            {/* Logout */}
             <LogoutButton />
           </div>
         )}
 
-        {/* Account trigger */}
         <button
           type="button"
           onClick={() =>
@@ -334,7 +367,6 @@ export function AppSidebar() {
               "border-border bg-accent/50"
           )}
         >
-          {/* Avatar */}
           {user?.avatar_url ? (
             <Image
               src={user.avatar_url}
@@ -349,7 +381,6 @@ export function AppSidebar() {
             </div>
           )}
 
-          {/* User info */}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">
               {user?.email || "Loading..."}

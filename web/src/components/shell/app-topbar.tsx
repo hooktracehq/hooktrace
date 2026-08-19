@@ -1,8 +1,7 @@
-"use client"
-
-import { Bell, Command, Search, Wifi } from "lucide-react"
+import { Command, Search, Wifi } from "lucide-react"
 
 import { ThemeToggle } from "@/components/theme-toggle"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 export function AppTopbar() {
   return (
@@ -33,9 +32,7 @@ export function AppTopbar() {
         </div>
 
         {/* Notifications */}
-        <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-          <Bell className="h-4 w-4" />
-        </button>
+        <NotificationBell />
 
         {/* Theme */}
         <ThemeToggle />

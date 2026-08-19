@@ -418,29 +418,78 @@ class ConnectionManager:
     # BROADCAST EVENT
     # -------------------------------------------------
 
+    # async def broadcast_event(
+    #     self,
+    #     event: dict,
+    # ):
+    #     """
+    #     Route an event to the appropriate scoped
+    #     connections.
+
+    #     Customer-facing streams are user-scoped.
+    #     """
+
+    #     # -------------------------------------------------
+    #     # USER-SCOPED STREAM
+    #     # -------------------------------------------------
+
+    #     user_id = event.get("user_id")
+
+    #     if user_id:
+    #         await self.send_to_user(
+    #             str(user_id),
+    #             event,
+    #         )
+
+
     async def broadcast_event(
-        self,
-        event: dict,
-    ):
-        """
-        Route an event to the appropriate scoped
-        connections.
-
-        Customer-facing streams are user-scoped.
-        """
-
-        # -------------------------------------------------
-        # USER-SCOPED STREAM
-        # -------------------------------------------------
+    self,
+    event: dict,
+):
+        print(
+        "[WS] Broadcasting event:",
+        event,
+    )
 
         user_id = event.get("user_id")
 
+        print(
+        "[WS] Event user_id:",
+        user_id,
+    )
+
         if user_id:
             await self.send_to_user(
-                str(user_id),
-                event,
-            )
+            str(user_id),
+            event,
+        )
 
+        token = event.get("token")
+
+        if token:
+            await self.send(
+            str(token),
+            event,
+            "token",
+        )
+
+        provider = event.get("provider")
+
+        if provider:
+            await self.send(
+            str(provider),
+            event,
+            "provider",
+        )
+
+        route = event.get("route")
+
+        if route:
+            await self.send(
+            str(route),
+            event,
+            "route",
+        )
         # -------------------------------------------------
         # TOKEN-SCOPED STREAM
         # -------------------------------------------------

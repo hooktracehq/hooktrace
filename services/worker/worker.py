@@ -1403,7 +1403,6 @@ def retry_scheduler():
         db = SessionLocal()
 
         try:
-
             rows = db.execute(
                 text(
                     """
@@ -1418,7 +1417,6 @@ def retry_scheduler():
             ).fetchall()
 
             for row in rows:
-
                 redis_client.lpush(
                     QUEUE_MAIN,
                     str(row.id),
@@ -1426,12 +1424,16 @@ def retry_scheduler():
 
             db.commit()
 
-        finally:
+        except Exception as e:
+            db.rollback()
+            print(
+                f"[retry-scheduler] ERROR: {e}"
+            )
 
+        finally:
             db.close()
 
         time.sleep(5)
-
 
 # =========================================================
 # MAIN WORKER
