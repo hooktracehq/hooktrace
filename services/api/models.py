@@ -1,24 +1,58 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import JSON
+
 import uuid
 
 from .database import Base
 
 
+# ============================================================
+# USER
+# ============================================================
+
+
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        nullable=False,
+    )
 
-    email = Column(Text, unique=True, nullable=False)
-    api_key = Column(Text, unique=True, nullable=False)
+    email = Column(
+        Text,
+        unique=True,
+        nullable=False,
+    )
+
+    api_key = Column(
+        Text,
+        unique=True,
+        nullable=False,
+    )
 
     password_hash = Column(Text)
-    provider = Column(Text, default="local")
+
+    provider = Column(
+        Text,
+        default="local",
+    )
+
     provider_id = Column(Text)
+
     avatar_url = Column(Text)
 
     created_at = Column(
@@ -26,30 +60,56 @@ class User(Base):
         server_default=func.now(),
     )
 
+    # --------------------------------------------------------
+    # Relationships
+    # --------------------------------------------------------
+
     routes = relationship(
         "WebhookRoute",
         back_populates="user",
     )
 
     replay_jobs = relationship(
-    "ReplayJob",
-    back_populates="user",
-)
+        "ReplayJob",
+        back_populates="user",
+    )
 
+
+# ============================================================
+# WEBHOOK ROUTE
+# ============================================================
 
 
 class WebhookRoute(Base):
     __tablename__ = "webhook_routes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+    )
 
-    token = Column(String, nullable=False)
-    route = Column(String, nullable=False)
+    token = Column(
+        String,
+        nullable=False,
+    )
+
+    route = Column(
+        String,
+        nullable=False,
+    )
 
     secret = Column(String)
-    mode = Column(String, default="dev")
 
+    mode = Column(
+        String,
+        default="dev",
+    )
+
+    # Legacy / route-level targets.
+    # These are kept because they already exist in the
+    # current database and older routes may still use them.
     dev_target = Column(String)
+
     prod_target = Column(String)
 
     user_id = Column(
@@ -62,6 +122,10 @@ class WebhookRoute(Base):
         server_default=func.now(),
     )
 
+    # --------------------------------------------------------
+    # Relationships
+    # --------------------------------------------------------
+
     user = relationship(
         "User",
         back_populates="routes",
@@ -72,11 +136,26 @@ class WebhookRoute(Base):
         back_populates="route",
     )
 
+    # New route -> many delivery targets relationship.
+    delivery_target_links = relationship(
+        "RouteDeliveryTarget",
+        back_populates="route",
+        cascade="all, delete-orphan",
+    )
+
+
+# ============================================================
+# WEBHOOK EVENT
+# ============================================================
+
 
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+    )
 
     route_id = Column(
         Integer,
@@ -84,6 +163,7 @@ class WebhookEvent(Base):
     )
 
     headers = Column(JSON)
+
     payload = Column(JSON)
 
     status = Column(
@@ -119,7 +199,6 @@ class WebhookEvent(Base):
 
     event_type = Column(String)
 
-    # NEW
     delivery_duration = Column(
         Integer,
         nullable=True,
@@ -130,10 +209,19 @@ class WebhookEvent(Base):
         server_default=func.now(),
     )
 
+    # --------------------------------------------------------
+    # Relationships
+    # --------------------------------------------------------
+
     route = relationship(
         "WebhookRoute",
         back_populates="events",
     )
+
+
+# ============================================================
+# REPLAY JOB
+# ============================================================
 
 
 class ReplayJob(Base):
@@ -192,10 +280,14 @@ class ReplayJob(Base):
         nullable=True,
     )
 
+    # --------------------------------------------------------
+    # Relationships
+    # --------------------------------------------------------
+
     user = relationship(
-    "User",
-    back_populates="replay_jobs",
-)
+        "User",
+        back_populates="replay_jobs",
+    )
 
     events = relationship(
         "ReplayJobEvent",
@@ -204,6 +296,10 @@ class ReplayJob(Base):
     )
 
 
+# ============================================================
+# REPLAY JOB EVENT
+# ============================================================
+
 
 class ReplayJobEvent(Base):
     __tablename__ = "replay_job_events"
@@ -211,7 +307,7 @@ class ReplayJobEvent(Base):
     id = Column(
         Integer,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     replay_job_id = Column(
@@ -252,6 +348,10 @@ class ReplayJobEvent(Base):
         nullable=True,
     )
 
+    # --------------------------------------------------------
+    # Relationships
+    # --------------------------------------------------------
+
     job = relationship(
         "ReplayJob",
         back_populates="events",
@@ -262,10 +362,18 @@ class ReplayJobEvent(Base):
     )
 
 
+# ============================================================
+# USAGE METRIC
+# ============================================================
+
+
 class UsageMetric(Base):
     __tablename__ = "usage_metrics"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+    )
 
     user_id = Column(
         UUID(as_uuid=True),
@@ -285,6 +393,92 @@ class UsageMetric(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+# ============================================================
+# DELIVERY TARGET
+# ============================================================
+
+
+class DeliveryTarget(Base):
+    __tablename__ = "delivery_targets"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    name = Column(
+        String,
+        nullable=False,
+    )
+
+    type = Column(
+        String,
+        nullable=False,
+    )
+
+    config = Column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+
+    enabled = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
+    providers = Column(
+        JSON,
+        nullable=True,
+        default=list,
+    )
+
+    success_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+
+    error_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    last_used = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # --------------------------------------------------------
+    # Relationships
+    # --------------------------------------------------------
+
+    route_links = relationship(
+        "RouteDeliveryTarget",
+        back_populates="target",
+        cascade="all, delete-orphan",
+    )
+
+
+# ============================================================
+# ROUTE <-> DELIVERY TARGET
+# ============================================================
 
 
 class RouteDeliveryTarget(Base):
@@ -325,6 +519,10 @@ class RouteDeliveryTarget(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    # --------------------------------------------------------
+    # Relationships
+    # --------------------------------------------------------
 
     route = relationship(
         "WebhookRoute",

@@ -132,9 +132,7 @@ async def relay(
                 SELECT
                     id,
                     secret,
-                    mode,
-                    dev_target,
-                    prod_target
+                    mode
                 FROM webhook_routes
                 WHERE
                     token = :token
@@ -281,22 +279,22 @@ async def relay(
         # Resolve delivery target
         # ----------------------------------
 
-        delivery_target = (
-            route_config["dev_target"]
-            if route_config["mode"] == "dev"
-            else route_config["prod_target"]
-        )
+        # delivery_target = (
+        #     route_config["dev_target"]
+        #     if route_config["mode"] == "dev"
+        #     else route_config["prod_target"]
+        # )
 
-        if not delivery_target:
+        # if not delivery_target:
 
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "detail": (
-                        "No delivery target configured"
-                    )
-                },
-            )
+        #     return JSONResponse(
+        #         status_code=400,
+        #         content={
+        #             "detail": (
+        #                 "No delivery target configured"
+        #             )
+        #         },
+        #     )
 
         # ----------------------------------
         # Extract provider event type

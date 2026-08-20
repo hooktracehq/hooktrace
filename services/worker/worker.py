@@ -631,11 +631,12 @@ def deliver_event(
 
         result = asyncio.run(
             route_webhook_to_targets(
-                user_id=user_id,
-                webhook_data=delivery_payload,
-                provider=row["provider"],
-            )
-        )
+        user_id=str(row["user_id"]),
+        route_id=row["route_id"],
+        webhook_data=delivery_payload,
+        provider=row["provider"],
+    )
+)
 
         print(
             "ROUTER RESULT:",
@@ -876,14 +877,14 @@ def deliver_event(
                 db.execute(
                     text(
                         """
-                        UPDATE webhook_events
-                        SET
-                            status = 'retrying',
-                            attempt_count = :attempts,
-                            delivery_duration = :duration,
-                            last_error = :error,
-                            next_retry_at = :retry_at
-                        WHERE id = :id
+                            UPDATE webhook_events
+SET
+    status = 'retrying',
+    attempt_count = :attempts,
+    retry_count = COALESCE(retry_count, 0) + 1,
+    delivery_duration = :duration,
+    last_error = :error,
+    next_retry_at = :retry_at
                         """
                     ),
                     {
@@ -908,20 +909,25 @@ def deliver_event(
             ).inc()
 
         # =================================================
-        # NO DELIVERY TARGET FAILURE
-        # =================================================
+# NO DELIVERY TARGETS
+# =================================================
 
         else:
+
+            final_error = (
+                "No active delivery targets configured "
+                "for this route"
+            )
 
             db.execute(
                 text(
                     """
                     UPDATE webhook_events
                     SET
-                        status = 'delivered',
+                        status = 'failed',
                         attempt_count = :attempts,
                         delivery_duration = :duration,
-                        last_error = NULL,
+                        last_error = :error,
                         next_retry_at = NULL,
                         processed_at = NOW()
                     WHERE id = :id
@@ -931,33 +937,60 @@ def deliver_event(
                     "id": event_id,
                     "attempts": current_attempt,
                     "duration": elapsed_ms,
+                    "error": final_error,
                 },
             )
 
-            events_delivered.labels(
+            events_failed.labels(
                 row.get("provider")
                 or "unknown"
             ).inc()
 
-            status = "delivered"
+            status = "failed"
 
-            db.execute(
-                text(
-                    """
-                    UPDATE replay_job_events
-                    SET
-                        status = 'completed',
-                        finished_at = NOW(),
-                        error = NULL
-                    WHERE
-                        event_id = :event_id
-                        AND status = 'running'
-                    """
-                ),
-                {
-                    "event_id": event_id,
-                },
-            )
+            if replay_job_id is not None:
+
+                db.execute(
+                    text(
+                        """
+                        UPDATE replay_job_events
+                        SET
+                            status = 'failed',
+                            finished_at = NOW(),
+                            error = :error
+                        WHERE
+                            replay_job_id = :job_id
+                            AND event_id = :event_id
+                            AND status = 'running'
+                        """
+                    ),
+                    {
+                        "job_id": replay_job_id,
+                        "event_id": event_id,
+                        "error": final_error,
+                    },
+                )
+
+            else:
+
+                db.execute(
+                    text(
+                        """
+                        UPDATE replay_job_events
+                        SET
+                            status = 'failed',
+                            finished_at = NOW(),
+                            error = :error
+                        WHERE
+                            event_id = :event_id
+                            AND status = 'running'
+                        """
+                    ),
+                    {
+                        "event_id": event_id,
+                        "error": final_error,
+                    },
+                )
 
             finalize_replay_job_for_event(
                 db,

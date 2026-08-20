@@ -67,6 +67,10 @@ services:
       RABBITMQ_HOST: rabbitmq
       AWS_ENDPOINT_URL: http://localstack:4566
       AWS_REGION: us-east-1
+
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     
 
     ports:
@@ -95,6 +99,11 @@ services:
       RABBITMQ_HOST: rabbitmq
       AWS_ENDPOINT_URL: http://localstack:4566
       AWS_REGION: us-east-1
+
+    dns:
+    - 8.8.8.8
+    - 1.1.1.1
+
     depends_on:
       postgres:
         condition: service_healthy
