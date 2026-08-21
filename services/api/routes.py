@@ -1,5 +1,7 @@
 print(">>> routes.py loaded <<<")
 
+import json
+
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -21,7 +23,164 @@ from .metrics import (
     webhooks_invalid_signature,
 )
 
+
 router = APIRouter()
+
+
+# ============================================================
+# Provider detection
+# ============================================================
+
+
+def detect_provider(request: Request, route_provider: str | None = None) -> str:
+    """
+    Detect provider from webhook headers.
+
+    Header-based detection has priority.
+
+    If no provider-specific signature/header exists,
+    fall back to the provider configured on the route.
+
+    This is important for local/dev testing where a request
+    may not contain real provider signature headers.
+    """
+
+    headers = request.headers
+
+    # ----------------------------------
+    # Provider-specific headers
+    # ----------------------------------
+
+    if "stripe-signature" in headers:
+        return "stripe"
+
+    if "x-hub-signature-256" in headers:
+        return "github"
+
+    if "x-razorpay-signature" in headers:
+        return "razorpay"
+
+    if "x-shopify-hmac-sha256" in headers:
+        return "shopify"
+
+    if "x-slack-signature" in headers:
+        return "slack"
+
+    if "x-signature-ed25519" in headers:
+        return "discord"
+
+    if "x-notion-signature" in headers:
+        return "notion"
+
+    if "x-supabase-signature" in headers:
+        return "supabase"
+
+    # ----------------------------------
+    # Route provider fallback
+    # ----------------------------------
+
+    if route_provider:
+        return route_provider
+
+    return "generic"
+
+
+# ============================================================
+# Payload parsing
+# ============================================================
+
+
+def parse_payload(
+    raw_body: bytes,
+    content_type: str,
+):
+    """
+    Parse webhook body.
+
+    JSON bodies are converted into real Python objects.
+
+    utf-8-sig is intentionally used so UTF-8 BOMs are removed.
+
+    Example:
+
+        b'\\xef\\xbb\\xbf{"id":"evt_123"}'
+
+    becomes:
+
+        {"id": "evt_123"}
+
+    rather than a JSON string containing the BOM.
+    """
+
+    if not raw_body:
+        return {}
+
+    content_type = (content_type or "").lower()
+
+    # ----------------------------------
+    # JSON
+    # ----------------------------------
+
+    if (
+        "application/json" in content_type
+        or "application/*+json" in content_type
+    ):
+        try:
+            raw_text = raw_body.decode("utf-8-sig")
+
+            print(
+                "[HOOKTRACE] Raw JSON body:",
+                repr(raw_text),
+            )
+
+            parsed = json.loads(raw_text)
+
+            print(
+                "[HOOKTRACE] Parsed payload type:",
+                type(parsed).__name__,
+            )
+
+            print(
+                "[HOOKTRACE] Parsed payload:",
+                parsed,
+            )
+
+            return parsed
+
+        except (
+            json.JSONDecodeError,
+            UnicodeDecodeError,
+        ) as exc:
+
+            print(
+                "[HOOKTRACE] JSON parsing failed:",
+                exc,
+            )
+
+            # Preserve malformed payload instead of
+            # silently dropping it.
+            return raw_body.decode(
+                "utf-8",
+                errors="replace",
+            )
+
+    # ----------------------------------
+    # Non-JSON
+    # ----------------------------------
+
+    try:
+        return raw_body.decode(
+            "utf-8",
+            errors="replace",
+        )
+
+    except Exception:
+        return {}
+
+
+# ============================================================
+# Relay
+# ============================================================
 
 
 @router.post(
@@ -41,23 +200,15 @@ async def relay(
 
     raw_body = await request.body()
 
-    # Important:
-    # Provider verification modules such as Stripe need
-    # the exact raw request bytes.
+    # IMPORTANT:
+    # Preserve exact raw bytes for provider
+    # signature verification.
     request.state.raw_body = raw_body
 
-    # ----------------------------------
-    # Parse payload
-    # ----------------------------------
-
-    try:
-        payload = await request.json()
-
-    except Exception:
-        if raw_body:
-            payload = raw_body.decode(errors="ignore")
-        else:
-            payload = {}
+    print(
+        "[HOOKTRACE] Raw body length:",
+        len(raw_body),
+    )
 
     # ----------------------------------
     # Request metadata
@@ -77,41 +228,9 @@ async def relay(
         "x-timestamp"
     )
 
-    # ----------------------------------
-    # Detect provider
-    # ----------------------------------
-
-    provider = None
-
-    if "stripe-signature" in request.headers:
-        provider = "stripe"
-
-    elif "x-hub-signature-256" in request.headers:
-        provider = "github"
-
-    elif "x-razorpay-signature" in request.headers:
-        provider = "razorpay"
-
-    elif "x-shopify-hmac-sha256" in request.headers:
-        provider = "shopify"
-
-    elif "x-slack-signature" in request.headers:
-        provider = "slack"
-
-    elif "x-signature-ed25519" in request.headers:
-        provider = "discord"
-
-    elif "x-notion-signature" in request.headers:
-        provider = "notion"
-
-    elif "x-supabase-signature" in request.headers:
-        provider = "supabase"
-
-    else:
-        provider = "generic"
-
-    print(
-        f"[HOOKTRACE] Detected provider: {provider}"
+    content_type = request.headers.get(
+        "content-type",
+        "",
     )
 
     # ----------------------------------
@@ -122,9 +241,9 @@ async def relay(
 
     try:
 
-        # ----------------------------------
+        # ====================================================
         # Load route
-        # ----------------------------------
+        # ====================================================
 
         route_config = db.execute(
             text(
@@ -132,7 +251,8 @@ async def relay(
                 SELECT
                     id,
                     secret,
-                    mode
+                    mode,
+                    provider
                 FROM webhook_routes
                 WHERE
                     token = :token
@@ -155,10 +275,20 @@ async def relay(
 
         route_id = route_config["id"]
         route_secret = route_config["secret"]
+        route_mode = route_config["mode"]
+        route_provider = route_config["provider"]
 
-        # ----------------------------------
+        print(
+            "[HOOKTRACE] Route loaded:",
+            f"id={route_id},",
+            f"route={route},",
+            f"provider={route_provider},",
+            f"mode={route_mode}",
+        )
+
+        # ====================================================
         # Rate limiting
-        # ----------------------------------
+        # ====================================================
 
         if not check_rate_limit(
             token,
@@ -171,13 +301,45 @@ async def relay(
                 },
             )
 
-        # ----------------------------------
+        # ====================================================
+        # Detect provider
+        # ====================================================
+
+        provider = detect_provider(
+            request,
+            route_provider,
+        )
+
+        print(
+            f"[HOOKTRACE] Detected provider: {provider}"
+        )
+
+        # ====================================================
+        # Parse payload
+        # ====================================================
+
+        payload = parse_payload(
+            raw_body,
+            content_type,
+        )
+
+        print(
+            "[HOOKTRACE] FINAL payload type:",
+            type(payload).__name__,
+        )
+
+        print(
+            "[HOOKTRACE] FINAL payload:",
+            payload,
+        )
+
+        # ====================================================
         # Signature validation
-        # ----------------------------------
+        # ====================================================
 
         if (
             route_secret
-            and route_config["mode"] != "dev"
+            and route_mode != "dev"
         ):
 
             provider_module = PROVIDERS.get(
@@ -187,7 +349,7 @@ async def relay(
             if provider_module:
 
                 print(
-                    f"[HOOKTRACE] Using provider "
+                    "[HOOKTRACE] Using provider "
                     f"verifier: {provider}"
                 )
 
@@ -195,6 +357,7 @@ async def relay(
                     request,
                     route_secret,
                 ):
+
                     webhooks_invalid_signature.inc()
 
                     return JSONResponse(
@@ -214,6 +377,7 @@ async def relay(
                 )
 
                 if not signature:
+
                     webhooks_invalid_signature.inc()
 
                     return JSONResponse(
@@ -229,6 +393,7 @@ async def relay(
                     signature,
                     timestamp,
                 ):
+
                     webhooks_invalid_signature.inc()
 
                     return JSONResponse(
@@ -244,9 +409,9 @@ async def relay(
                 "[HOOKTRACE] Signature validation passed"
             )
 
-        # ----------------------------------
+        # ====================================================
         # Idempotency protection
-        # ----------------------------------
+        # ====================================================
 
         if idempotency_key:
 
@@ -275,30 +440,9 @@ async def relay(
                     "deduplicated": True,
                 }
 
-        # ----------------------------------
-        # Resolve delivery target
-        # ----------------------------------
-
-        # delivery_target = (
-        #     route_config["dev_target"]
-        #     if route_config["mode"] == "dev"
-        #     else route_config["prod_target"]
-        # )
-
-        # if not delivery_target:
-
-        #     return JSONResponse(
-        #         status_code=400,
-        #         content={
-        #             "detail": (
-        #                 "No delivery target configured"
-        #             )
-        #         },
-        #     )
-
-        # ----------------------------------
+        # ====================================================
         # Extract provider event type
-        # ----------------------------------
+        # ====================================================
 
         event_type = "unknown"
 
@@ -317,6 +461,7 @@ async def relay(
                 )
 
                 if extracted_type:
+
                     event_type = str(
                         extracted_type
                     )
@@ -329,15 +474,39 @@ async def relay(
                     f"{provider}: {exc}"
                 )
 
+        # ----------------------------------------------------
+        # Generic fallback
+        #
+        # Useful for providers/dev requests where the
+        # provider module doesn't expose an extractor.
+        # ----------------------------------------------------
+
+        if event_type == "unknown" and isinstance(
+            payload,
+            dict,
+        ):
+
+            possible_event_type = (
+                payload.get("type")
+                or payload.get("event_type")
+                or payload.get("event")
+            )
+
+            if possible_event_type:
+
+                event_type = str(
+                    possible_event_type
+                )
+
         print(
-            "[HOOKTRACE] Event metadata: "
-            f"provider={provider}, "
-            f"event_type={event_type}"
+            "[HOOKTRACE] Event metadata:",
+            f"provider={provider},",
+            f"event_type={event_type}",
         )
 
-        # ----------------------------------
+        # ====================================================
         # Persist event
-        # ----------------------------------
+        # ====================================================
 
         event = WebhookEvent(
             route_id=route_id,
@@ -356,15 +525,16 @@ async def relay(
         db.refresh(event)
 
         print(
-            f"[HOOKTRACE] Event persisted: "
-            f"id={event.id}, "
-            f"provider={provider}, "
-            f"event_type={event_type}"
+            "[HOOKTRACE] Event persisted:",
+            f"id={event.id},",
+            f"provider={provider},",
+            f"event_type={event_type},",
+            f"payload_type={type(payload).__name__}",
         )
 
-        # ----------------------------------
+        # ====================================================
         # Usage tracking
-        # ----------------------------------
+        # ====================================================
 
         db.execute(
             text(
@@ -391,9 +561,9 @@ async def relay(
 
         db.commit()
 
-        # ----------------------------------
+        # ====================================================
         # Metrics
-        # ----------------------------------
+        # ====================================================
 
         webhooks_received.labels(
             provider=provider,
@@ -404,9 +574,9 @@ async def relay(
             "[HOOKTRACE] Metric incremented"
         )
 
-        # ----------------------------------
+        # ====================================================
         # Enqueue worker
-        # ----------------------------------
+        # ====================================================
 
         redis_client.lpush(
             "webhook:ingress",
@@ -414,9 +584,13 @@ async def relay(
         )
 
         print(
-            f"[HOOKTRACE] Event {event.id} "
-            f"queued for worker"
+            "[HOOKTRACE] Event queued:",
+            event.id,
         )
+
+        # ====================================================
+        # Response
+        # ====================================================
 
         return {
             "accepted": True,
@@ -436,14 +610,25 @@ async def relay(
             "deduplicated": True,
         }
 
+    except Exception as exc:
+
+        db.rollback()
+
+        print(
+            "[HOOKTRACE] Relay error:",
+            repr(exc),
+        )
+
+        raise
+
     finally:
 
         db.close()
 
 
-# ==========================================
+# ============================================================
 # Integration webhook
-# ==========================================
+# ============================================================
 
 
 @router.post(
@@ -454,6 +639,7 @@ async def integration_webhook(
     token: str,
     request: Request,
 ):
+
     db: Session = SessionLocal()
 
     try:
