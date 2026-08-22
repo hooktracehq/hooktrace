@@ -630,11 +630,12 @@ def deliver_event(
         }
 
         result = asyncio.run(
-            route_webhook_to_targets(
+    route_webhook_to_targets(
         user_id=str(row["user_id"]),
         route_id=row["route_id"],
         webhook_data=delivery_payload,
         provider=row["provider"],
+        event_attempt=current_attempt,
     )
 )
 
@@ -800,6 +801,7 @@ def deliver_event(
                             attempt_count = :attempts,
                             delivery_duration = :duration,
                             last_error = :error,
+                            next_retry_at = NULL,
                             processed_at = NOW()
                         WHERE id = :id
                         """
@@ -881,7 +883,7 @@ def deliver_event(
 SET
     status = 'retrying',
     attempt_count = :attempts,
-    retry_count = COALESCE(retry_count, 0) + 1,
+    retry_count = GREATEST(:attempts - 1, 0),
     delivery_duration = :duration,
     last_error = :error,
     next_retry_at = :retry_at
