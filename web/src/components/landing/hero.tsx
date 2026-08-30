@@ -186,7 +186,6 @@
 
 
 
-
 "use client"
 
 import Image from "next/image"
@@ -369,16 +368,6 @@ export function Hero() {
 >
   <LaunchSection />
 </motion.div>
-
-        {/* Countdown */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.55 }}
-          className="mt-10"
-        >
-          <LaunchSection />
-        </motion.div>
 
         {/*  TRUST LINE (UPDATED) */}
         <p className="mt-8 text-xs text-muted-foreground">
