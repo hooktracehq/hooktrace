@@ -314,27 +314,61 @@ export function Hero() {
         </motion.div>
 
         {/* GitHub Badge */}
-        <motion.a
-          href="https://www.github.com/yasir761/hooktrace"
-          target="_blank"
-          rel="noopener noreferrer"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="
-            mt-6
-            inline-flex items-center gap-2
-            rounded-full
-            border border-border
-            px-4 py-1.5
-            text-xs font-medium
-            text-muted-foreground
-            hover:bg-muted
-            transition
-          "
-        >
-          ⭐ Open Source on GitHub
-        </motion.a>
+        {/* GitHub Badge */}
+<motion.a
+  href="https://www.github.com/yasir761/hooktrace"
+  target="_blank"
+  rel="noopener noreferrer"
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.45 }}
+  className="
+    mt-6
+    inline-flex items-center gap-2
+    rounded-full
+    border border-border
+    px-4 py-1.5
+    text-xs font-medium
+    text-muted-foreground
+    hover:bg-muted
+    transition
+  "
+>
+  ⭐ Open Source on GitHub
+</motion.a>
+
+{/* List Maro Badge */}
+<a
+  href="https://listmaro.com"
+  target="_blank"
+  rel="noopener"
+  className="
+    mt-4
+    inline-flex
+    items-center
+    justify-center
+    transition-opacity
+    duration-200
+    hover:opacity-80
+  "
+>
+  <img
+    src="https://listmaro.com/badge.svg"
+    alt="Listed on List Maro"
+    width={148}
+    height={40}
+  />
+</a>
+
+{/* Countdown */}
+<motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ delay: 0.55 }}
+  className="mt-10"
+>
+  <LaunchSection />
+</motion.div>
 
         {/* Countdown */}
         <motion.div

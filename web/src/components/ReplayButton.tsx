@@ -8,22 +8,50 @@ import { toast } from "sonner"
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 
-export function ReplayButton({ eventId }: { eventId: number }) {
+export function ReplayButton({
+  eventId,
+}: {
+  eventId: number
+}) {
   const [loading, setLoading] = useState(false)
 
   async function handleReplay() {
     if (loading) return
 
+    console.log(
+      "[ReplayButton] clicked",
+      eventId
+    )
+
     setLoading(true)
 
     try {
-      await apiFetch(`/events/${eventId}/replay`, {
-        method: "POST",
-      })
+      const result = await apiFetch(
+        `/events/${eventId}/replay`,
+        {
+          method: "POST",
+        }
+      )
 
-      toast.success("Event replay queued")
-    } catch (err) {
-      toast.error("Failed to replay event")
+      console.log(
+        "[ReplayButton] API response:",
+        result
+      )
+
+      toast.success(
+        `Event #${eventId} replay queued`
+      )
+    } catch (error) {
+      console.error(
+        "[ReplayButton] replay failed:",
+        error
+      )
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to replay event"
+      )
     } finally {
       setLoading(false)
     }
@@ -35,6 +63,7 @@ export function ReplayButton({ eventId }: { eventId: number }) {
       className="inline-flex"
     >
       <Button
+        type="button"
         size="sm"
         variant="outline"
         onClick={handleReplay}
@@ -42,11 +71,16 @@ export function ReplayButton({ eventId }: { eventId: number }) {
         className="flex items-center gap-2"
       >
         <RotateCcw
-          className={`h-4 w-4 ${
-            loading ? "animate-spin text-muted-foreground" : ""
-          }`}
+          className={
+            loading
+              ? "h-4 w-4 animate-spin"
+              : "h-4 w-4"
+          }
         />
-        {loading ? "Replaying…" : "Replay"}
+
+        {loading
+          ? "Replaying..."
+          : "Replay Delivery"}
       </Button>
     </motion.div>
   )

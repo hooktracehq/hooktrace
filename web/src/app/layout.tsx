@@ -35,6 +35,12 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
   },
 
+  // List Maro domain verification
+  other: {
+    "listmaro-verification":
+      "281c013cc2ac4488a890604263cf0f1d",
+  },
+
   openGraph: {
     title: "Hooktrace – Webhook Debugging & Retry Platform",
 
