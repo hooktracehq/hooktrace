@@ -76,6 +76,8 @@ def list_events(
                 e.event_type,
                 e.status,
                 e.attempt_count,
+                e.headers,
+                e.payload,
                 e.last_error,
                 e.created_at
             FROM webhook_events e
