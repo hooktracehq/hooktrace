@@ -668,7 +668,7 @@ def deliver_event(
         # SUCCESS
         # =================================================
 
-        if successful > 0:
+        if failed == 0 and successful > 0:
 
             db.execute(
                 text(
