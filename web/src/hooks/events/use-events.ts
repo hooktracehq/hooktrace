@@ -1,27 +1,42 @@
-
-
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
+
 import { getEvents } from "@/lib/services/events"
 
 type EventFilters = {
-    status?: string
-    provider?: string
-    limit?: number
-    offset?: number
-  }
-export function useEvents(filters?: EventFilters) {
-  console.log("🔥 useEvents hook rendered", filters)
+  status?: string
+  provider?: string
+  limit?: number
+  offset?: number
+}
+
+export function useEvents(
+  filters?: EventFilters
+) {
+  console.log(
+    "🔥 useEvents hook rendered",
+    filters
+  )
 
   return useQuery({
-    queryKey: ["events", filters],
+    queryKey: [
+      "events",
+      filters ?? {},
+    ],
+
     queryFn: async () => {
-      console.log("🚀 queryFn running")
+      console.log(
+        "🚀 queryFn running"
+      )
 
-      const data = await getEvents(filters)
+      const data =
+        await getEvents(filters)
 
-      console.log("✅ queryFn result", data)
+      console.log(
+        "✅ queryFn result",
+        data
+      )
 
       return data
     },

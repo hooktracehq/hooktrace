@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { useRealtimeStore } from "@/app/stores/realtime-store"
@@ -8,8 +9,12 @@ import { useEventsStore } from "@/app/stores/events-store"
 import { useNotificationsStore } from "@/app/stores/notifications-store"
 
 import type { Event } from "@/types/event"
+import type { EventsResponse } from "@/lib/services/events"
 
 export function useRealtimeSystem() {
+  const queryClient =
+    useQueryClient()
+
   // -------------------------------------------------
   // Notification Store
   // -------------------------------------------------
@@ -151,6 +156,68 @@ export function useRealtimeSystem() {
           addEvent(data)
 
           // ---------------------------------------------
+          // Update Events React Query cache
+          // ---------------------------------------------
+
+          queryClient.setQueryData<EventsResponse>(
+            ["events", {}],
+            (old) => {
+              if (!old) {
+                return {
+                  items: [data],
+                  limit: 50,
+                  offset: 0,
+                }
+              }
+
+              const existingIndex =
+                old.items.findIndex(
+                  (item) =>
+                    item.id === data.id
+                )
+
+              // -----------------------------------------
+              // New event
+              // -----------------------------------------
+
+              if (
+                existingIndex === -1
+              ) {
+                return {
+                  ...old,
+
+                  items: [
+                    data,
+                    ...old.items,
+                  ],
+                }
+              }
+
+              // -----------------------------------------
+              // Existing event
+              // -----------------------------------------
+
+              const items = [
+                ...old.items,
+              ]
+
+              items[
+                existingIndex
+              ] = {
+                ...items[
+                  existingIndex
+                ],
+                ...data,
+              }
+
+              return {
+                ...old,
+                items,
+              }
+            }
+          )
+
+          // ---------------------------------------------
           // Activity feed
           // ---------------------------------------------
 
@@ -160,7 +227,8 @@ export function useRealtimeSystem() {
             level:
               data.status === "dlq"
                 ? "error"
-                : data.status === "retrying"
+                : data.status ===
+                    "retrying"
                   ? "warning"
                   : "info",
 
@@ -342,6 +410,7 @@ export function useRealtimeSystem() {
       }
     }
   }, [
+    queryClient,
     addActivity,
     addEvent,
     addNotification,

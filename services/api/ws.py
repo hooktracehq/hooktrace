@@ -442,135 +442,70 @@ class ConnectionManager:
     #         )
 
 
-    async def broadcast_event(
+async def broadcast_event(
     self,
     event: dict,
 ):
-        print(
+    print(
         "[WS] Broadcasting event:",
         event,
     )
 
-        user_id = event.get("user_id")
+    user_id = event.get("user_id")
 
-        print(
+    print(
         "[WS] Event user_id:",
         user_id,
     )
 
-        if user_id:
-            await self.send_to_user(
+    # -------------------------------------------------
+    # USER-SCOPED STREAM
+    # -------------------------------------------------
+
+    if user_id:
+        await self.send_to_user(
             str(user_id),
             event,
         )
 
-        token = event.get("token")
+    # -------------------------------------------------
+    # TOKEN-SCOPED STREAM
+    # -------------------------------------------------
 
-        if token:
-            await self.send(
+    token = event.get("token")
+
+    if token:
+        await self.send(
             str(token),
             event,
             "token",
         )
 
-        provider = event.get("provider")
+    # -------------------------------------------------
+    # PROVIDER-SCOPED INTERNAL STREAM
+    # -------------------------------------------------
 
-        if provider:
-            await self.send(
+    provider = event.get("provider")
+
+    if provider:
+        await self.send(
             str(provider),
             event,
             "provider",
         )
 
-        route = event.get("route")
+    # -------------------------------------------------
+    # ROUTE-SCOPED INTERNAL STREAM
+    # -------------------------------------------------
 
-        if route:
-            await self.send(
+    route = event.get("route")
+
+    if route:
+        await self.send(
             str(route),
             event,
             "route",
         )
-        # -------------------------------------------------
-        # TOKEN-SCOPED STREAM
-        # -------------------------------------------------
-
-        token = event.get("token")
-
-        if token:
-            await self.send(
-                str(token),
-                event,
-                "token",
-            )
-
-        # -------------------------------------------------
-        # PROVIDER-SCOPED INTERNAL STREAM
-        # -------------------------------------------------
-
-        provider = event.get("provider")
-
-        if provider:
-            await self.send(
-                str(provider),
-                event,
-                "provider",
-            )
-
-        # -------------------------------------------------
-        # ROUTE-SCOPED INTERNAL STREAM
-        # -------------------------------------------------
-
-        route = event.get("route")
-
-        if route:
-            await self.send(
-                str(route),
-                event,
-                "route",
-            )
-
-    # -------------------------------------------------
-    # CONNECTION STATS
-    # -------------------------------------------------
-
-    def stats(self):
-
-        return {
-            "users": len(
-                self.user_connections
-            ),
-
-            "tokens": len(
-                self.token_connections
-            ),
-
-            "providers": len(
-                self.provider_connections
-            ),
-
-            "routes": len(
-                self.route_connections
-            ),
-
-            "total_connections": (
-                sum(
-                    len(v)
-                    for v in self.user_connections.values()
-                )
-                + sum(
-                    len(v)
-                    for v in self.token_connections.values()
-                )
-                + sum(
-                    len(v)
-                    for v in self.provider_connections.values()
-                )
-                + sum(
-                    len(v)
-                    for v in self.route_connections.values()
-                )
-            ),
-        }
 
 
 manager = ConnectionManager()
