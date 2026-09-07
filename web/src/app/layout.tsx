@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/next"
 import { GoogleAnalytics } from "@/components/analytics/ga"
 import { QueryProvider } from "@/providers/query-provider"
-import { Toaster } from "sonner"
 
 import "./global.css"
 
@@ -22,7 +21,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://hooktrace.xyz"),
 
-  title: "Hooktrace – Webhook Debugging & Retry Platform",
+  title:
+    "Hooktrace – Webhook Debugging & Retry Platform",
 
   description:
     "Capture, inspect, and replay webhook events. Debug integrations in minutes, not hours.",
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
   },
 
-  // List Maro domain verification
   other: {
     "listmaro-verification":
       "281c013cc2ac4488a890604263cf0f1d",
   },
 
   openGraph: {
-    title: "Hooktrace – Webhook Debugging & Retry Platform",
+    title:
+      "Hooktrace – Webhook Debugging & Retry Platform",
 
     description:
       "Relay, debug and monitor webhooks with retries and AI debugging.",
@@ -60,7 +60,8 @@ export const metadata: Metadata = {
         url: "/og.jpg",
         width: 1200,
         height: 630,
-        alt: "Hooktrace — webhook debugging, monitoring, and replay platform",
+        alt:
+          "Hooktrace — webhook debugging, monitoring, and replay platform",
       },
     ],
   },
@@ -68,15 +69,13 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
 
-    title: "Hooktrace – Webhook Debugging & Retry Platform",
+    title:
+      "Hooktrace – Webhook Debugging & Retry Platform",
 
     description:
       "Webhook relay with retries, observability and AI debugging.",
 
     images: ["/og.jpg"],
-
-    // Add this only if this is your actual Hooktrace X username:
-    // site: "@hooktrace",
   },
 }
 
@@ -96,11 +95,6 @@ export default function RootLayout({
           <QueryProvider>
             {children}
           </QueryProvider>
-
-          <Toaster
-            richColors
-            position="top-right"
-          />
 
           <Analytics />
 

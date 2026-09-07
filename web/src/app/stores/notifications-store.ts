@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
 export type NotificationLevel =
   | "info"
@@ -21,7 +22,7 @@ type NotificationsState = {
 
   addNotification: (
     notification: Notification
-  ) => void
+  ) => boolean
 
   markAsRead: (
     id: string
@@ -39,82 +40,128 @@ type NotificationsState = {
 const MAX_NOTIFICATIONS = 50
 
 export const useNotificationsStore =
-  create<NotificationsState>((set) => ({
-    notifications: [],
-
-    addNotification: (notification) =>
-      set((state) => {
-        /*
-         * Prevent duplicate notifications for
-         * the same event + notification type.
-         *
-         * The same event can legitimately produce
-         * multiple notification states:
-         *
-         * retrying
-         *     ↓
-         * dlq
-         *
-         * Therefore eventId alone is not enough.
-         */
-        const duplicate =
-          notification.eventId !== undefined &&
-          state.notifications.some(
-            (item) =>
-              item.eventId ===
-                notification.eventId &&
-              item.title ===
-                notification.title
-          )
-
-        if (duplicate) {
-          return state
-        }
-
-        return {
-          notifications: [
-            notification,
-            ...state.notifications,
-          ].slice(0, MAX_NOTIFICATIONS),
-        }
-      }),
-
-    markAsRead: (id) =>
-      set((state) => ({
-        notifications:
-          state.notifications.map(
-            (notification) =>
-              notification.id === id
-                ? {
-                    ...notification,
-                    read: true,
-                  }
-                : notification
-          ),
-      })),
-
-    markAllAsRead: () =>
-      set((state) => ({
-        notifications:
-          state.notifications.map(
-            (notification) => ({
-              ...notification,
-              read: true,
-            })
-          ),
-      })),
-
-    removeNotification: (id) =>
-      set((state) => ({
-        notifications:
-          state.notifications.filter(
-            (notification) =>
-              notification.id !== id
-          ),
-      })),
-
-    clearNotifications: () =>
-      set({
+  create<NotificationsState>()(
+    persist(
+      (set) => ({
         notifications: [],
+
+        // -------------------------------------------------
+        // ADD NOTIFICATION
+        // -------------------------------------------------
+
+        addNotification: (notification) => {
+          let added = false
+
+          set((state) => {
+            /*
+             * Prevent duplicate notifications for the
+             * same event + notification type.
+             *
+             * Example:
+             *
+             * event 165
+             *   retrying -> added
+             *   retrying -> ignored
+             *   retrying -> ignored
+             *
+             * event 165
+             *   dlq -> added
+             *
+             * retrying and dlq remain separate states.
+             */
+
+            const duplicate =
+              notification.eventId !== undefined &&
+              state.notifications.some(
+                (item) =>
+                  item.eventId ===
+                    notification.eventId &&
+                  item.title ===
+                    notification.title
+              )
+
+            if (duplicate) {
+              return state
+            }
+
+            added = true
+
+            return {
+              notifications: [
+                notification,
+                ...state.notifications,
+              ].slice(
+                0,
+                MAX_NOTIFICATIONS
+              ),
+            }
+          })
+
+          return added
+        },
+
+        // -------------------------------------------------
+        // MARK AS READ
+        // -------------------------------------------------
+
+        markAsRead: (id) =>
+          set((state) => ({
+            notifications:
+              state.notifications.map(
+                (notification) =>
+                  notification.id === id
+                    ? {
+                        ...notification,
+                        read: true,
+                      }
+                    : notification
+              ),
+          })),
+
+        // -------------------------------------------------
+        // MARK ALL AS READ
+        // -------------------------------------------------
+
+        markAllAsRead: () =>
+          set((state) => ({
+            notifications:
+              state.notifications.map(
+                (notification) => ({
+                  ...notification,
+                  read: true,
+                })
+              ),
+          })),
+
+        // -------------------------------------------------
+        // REMOVE
+        // -------------------------------------------------
+
+        removeNotification: (id) =>
+          set((state) => ({
+            notifications:
+              state.notifications.filter(
+                (notification) =>
+                  notification.id !== id
+              ),
+          })),
+
+        // -------------------------------------------------
+        // CLEAR
+        // -------------------------------------------------
+
+        clearNotifications: () =>
+          set({
+            notifications: [],
+          }),
       }),
-  }))
+      {
+        name: "hooktrace-notifications",
+
+        partialize: (state) => ({
+          notifications:
+            state.notifications,
+        }),
+      }
+    )
+  )

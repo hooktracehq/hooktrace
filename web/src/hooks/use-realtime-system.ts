@@ -12,11 +12,10 @@ import type { Event } from "@/types/event"
 import type { EventsResponse } from "@/lib/services/events"
 
 export function useRealtimeSystem() {
-  const queryClient =
-    useQueryClient()
+  const queryClient = useQueryClient()
 
   // -------------------------------------------------
-  // Notification Store
+  // NOTIFICATIONS
   // -------------------------------------------------
 
   const addNotification =
@@ -25,7 +24,7 @@ export function useRealtimeSystem() {
     )
 
   // -------------------------------------------------
-  // Realtime Store
+  // REALTIME STORE
   // -------------------------------------------------
 
   const setConnected =
@@ -49,7 +48,7 @@ export function useRealtimeSystem() {
     )
 
   // -------------------------------------------------
-  // Events Store
+  // EVENTS STORE
   // -------------------------------------------------
 
   const addEvent =
@@ -63,7 +62,7 @@ export function useRealtimeSystem() {
     )
 
   // -------------------------------------------------
-  // WebSocket
+  // WEBSOCKET
   // -------------------------------------------------
 
   useEffect(() => {
@@ -83,7 +82,7 @@ export function useRealtimeSystem() {
       setReconnecting(true)
 
       // -------------------------------------------------
-      // Build WebSocket URL
+      // BUILD WEBSOCKET URL
       // -------------------------------------------------
 
       const apiUrl =
@@ -100,6 +99,11 @@ export function useRealtimeSystem() {
       const websocketUrl =
         `${protocol}//${url.host}/ws/stream`
 
+      console.log(
+        "[Realtime] Connecting:",
+        websocketUrl
+      )
+
       ws = new WebSocket(
         websocketUrl
       )
@@ -108,10 +112,14 @@ export function useRealtimeSystem() {
         performance.now()
 
       // -------------------------------------------------
-      // Connected
+      // CONNECTED
       // -------------------------------------------------
 
       ws.onopen = () => {
+        console.log(
+          "[Realtime] Connected"
+        )
+
         setConnected(true)
 
         setEventsConnected(true)
@@ -139,7 +147,7 @@ export function useRealtimeSystem() {
       }
 
       // -------------------------------------------------
-      // Event received
+      // EVENT RECEIVED
       // -------------------------------------------------
 
       ws.onmessage = (message) => {
@@ -149,15 +157,20 @@ export function useRealtimeSystem() {
               message.data
             )
 
-          // ---------------------------------------------
-          // Store event
-          // ---------------------------------------------
+          console.log(
+            "[Realtime] Event received:",
+            data
+          )
+
+          // -------------------------------------------------
+          // STORE EVENT
+          // -------------------------------------------------
 
           addEvent(data)
 
-          // ---------------------------------------------
-          // Update Events React Query cache
-          // ---------------------------------------------
+          // -------------------------------------------------
+          // UPDATE EVENTS QUERY CACHE
+          // -------------------------------------------------
 
           queryClient.setQueryData<EventsResponse>(
             ["events", {}],
@@ -176,9 +189,9 @@ export function useRealtimeSystem() {
                     item.id === data.id
                 )
 
-              // -----------------------------------------
-              // New event
-              // -----------------------------------------
+              // -------------------------------------------------
+              // NEW EVENT
+              // -------------------------------------------------
 
               if (
                 existingIndex === -1
@@ -189,13 +202,13 @@ export function useRealtimeSystem() {
                   items: [
                     data,
                     ...old.items,
-                  ],
+                  ].slice(0, 50),
                 }
               }
 
-              // -----------------------------------------
-              // Existing event
-              // -----------------------------------------
+              // -------------------------------------------------
+              // EXISTING EVENT
+              // -------------------------------------------------
 
               const items = [
                 ...old.items,
@@ -217,9 +230,9 @@ export function useRealtimeSystem() {
             }
           )
 
-          // ---------------------------------------------
-          // Activity feed
-          // ---------------------------------------------
+          // -------------------------------------------------
+          // ACTIVITY
+          // -------------------------------------------------
 
           addActivity({
             id: crypto.randomUUID(),
@@ -241,9 +254,9 @@ export function useRealtimeSystem() {
               new Date().toISOString(),
           })
 
-          // ---------------------------------------------
-          // Notification data
-          // ---------------------------------------------
+          // -------------------------------------------------
+          // NOTIFICATION DATA
+          // -------------------------------------------------
 
           const eventId =
             data.id
@@ -260,84 +273,159 @@ export function useRealtimeSystem() {
             data.event_type ??
             "event"
 
-          // ---------------------------------------------
+          // -------------------------------------------------
           // RETRYING
-          // ---------------------------------------------
+          // -------------------------------------------------
 
           if (
             data.status ===
             "retrying"
           ) {
-            addNotification({
-              id: crypto.randomUUID(),
+            const notificationId =
+              `retrying-${eventId}`
 
-              eventId,
+            const notificationAdded =
+              addNotification({
+                id: notificationId,
 
-              title:
+                eventId,
+
+                title:
+                  "Webhook delivery retrying",
+
+                message:
+                  `${provider} ` +
+                  `${eventType} failed ` +
+                  "and will be retried",
+
+                level: "warning",
+
+                read: false,
+
+                timestamp,
+              })
+
+            // Only show the toast when a new
+            // notification was actually created.
+            if (notificationAdded) {
+              console.log(
+                "[Realtime] New retry notification:",
+                notificationId
+              )
+
+              toast.warning(
                 "Webhook delivery retrying",
+                {
+                  id: notificationId,
 
-              message:
-                `${provider} ` +
-                `${eventType} failed ` +
-                "and will be retried",
-
-              level: "warning",
-
-              read: false,
-
-              timestamp,
-            })
+                  description:
+                    `${provider} ` +
+                    `${eventType} failed ` +
+                    "and will be retried",
+                }
+              )
+            } else {
+              console.log(
+                "[Realtime] Duplicate retry notification ignored:",
+                notificationId
+              )
+            }
 
             return
           }
 
-          // ---------------------------------------------
+          // -------------------------------------------------
           // DLQ
-          // ---------------------------------------------
+          // -------------------------------------------------
 
           if (
-            data.status === "dlq"
+            data.status ===
+            "dlq"
           ) {
-            addNotification({
-              id: crypto.randomUUID(),
+            const notificationId =
+              `dlq-${eventId}`
 
-              eventId,
+            const notificationAdded =
+              addNotification({
+                id: notificationId,
 
-              title:
+                eventId,
+
+                title:
+                  "Event moved to DLQ",
+
+                message:
+                  `${provider} ` +
+                  `${eventType} was moved ` +
+                  "to the dead letter queue",
+
+                level: "error",
+
+                read: false,
+
+                timestamp,
+              })
+
+            // Only show the toast when a new
+            // notification was actually created.
+            if (notificationAdded) {
+              console.log(
+                "[Realtime] New DLQ notification:",
+                notificationId
+              )
+
+              toast.error(
                 "Event moved to DLQ",
+                {
+                  id: notificationId,
 
-              message:
-                `${provider} ` +
-                `${eventType} was moved ` +
-                "to the dead letter queue",
-
-              level: "error",
-
-              read: false,
-
-              timestamp,
-            })
+                  description:
+                    `${provider} ` +
+                    `${eventType} was moved ` +
+                    "to the dead letter queue",
+                }
+              )
+            } else {
+              console.log(
+                "[Realtime] Duplicate DLQ notification ignored:",
+                notificationId
+              )
+            }
 
             return
           }
         } catch (error) {
           console.error(
-            "Invalid websocket payload:",
+            "[Realtime] Invalid websocket payload:",
             error
           )
         }
       }
 
       // -------------------------------------------------
-      // Disconnected
+      // DISCONNECTED
       // -------------------------------------------------
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         if (
           intentionallyClosed
         ) {
           return
         }
+
+        console.warn(
+          "[Realtime] Disconnected",
+          {
+            code: event.code,
+
+            reason:
+              event.reason ||
+              "no reason provided",
+
+            wasClean:
+              event.wasClean,
+          }
+        )
 
         setConnected(false)
 
@@ -346,7 +434,11 @@ export function useRealtimeSystem() {
         setReconnecting(true)
 
         toast.error(
-          "Realtime disconnected"
+          "Realtime disconnected",
+          {
+            id:
+              "realtime-disconnected",
+          }
         )
 
         addActivity({
@@ -361,53 +453,58 @@ export function useRealtimeSystem() {
             new Date().toISOString(),
         })
 
+        if (reconnectTimeout) {
+          clearTimeout(
+            reconnectTimeout
+          )
+        }
+
         reconnectTimeout =
           setTimeout(
             () => {
-              connect()
+              if (
+                !intentionallyClosed
+              ) {
+                connect()
+              }
             },
             3000
           )
       }
 
       // -------------------------------------------------
-      // Error
+      // ERROR
       // -------------------------------------------------
 
       ws.onerror = () => {
-        if (
-          process.env.NODE_ENV ===
-          "production"
-        ) {
-          console.error(
-            "WebSocket error"
-          )
-        }
+        console.warn(
+          "[Realtime] WebSocket transport error"
+        )
       }
     }
 
     // -------------------------------------------------
-    // Initial connection
+    // INITIAL CONNECTION
     // -------------------------------------------------
 
     connect()
 
     // -------------------------------------------------
-    // Cleanup
+    // CLEANUP
     // -------------------------------------------------
 
     return () => {
       intentionallyClosed = true
 
-      ws?.close()
-
-      if (
-        reconnectTimeout
-      ) {
+      if (reconnectTimeout) {
         clearTimeout(
           reconnectTimeout
         )
       }
+
+      ws?.close()
+
+      ws = null
     }
   }, [
     queryClient,
