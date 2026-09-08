@@ -39,7 +39,7 @@ def get_dashboard_overview(
                     ) AS failed,
 
                     COUNT(*) FILTER (
-                        WHERE e.retry_count > 0
+                        WHERE e.status = 'retrying'
                     ) AS retries,
 
                     COUNT(*) FILTER (
@@ -430,7 +430,8 @@ def get_dashboard_overview(
                     r.user_id = :user_id
                     AND e.status IN (
                         'failed',
-                        'dlq'
+                        'dlq',
+                        'retrying'
                     )
 
                 ORDER BY e.created_at DESC
