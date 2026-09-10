@@ -1,4 +1,5 @@
 import type { Route } from "@/types/route"
+import { apiFetch } from "../api"
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -150,4 +151,48 @@ export async function getRoutes(): Promise<Route[]> {
       : []
 
   return items.map(normalizeRoute)
+}
+
+
+
+export async function getRouteTargets(routeId: string) {
+  return apiFetch<{
+    items: Array<{
+      id: string
+      name: string
+      type: string
+      config: Record<string, unknown>
+      enabled: boolean
+      providers: string[]
+      route_enabled: boolean
+      attached_at: string | null
+    }>
+  }>(`/routes/${routeId}/targets`)
+}
+
+export async function attachTargetToRoute(
+  routeId: string,
+  targetId: string
+) {
+  return apiFetch<{
+    success: boolean
+    route_id: number
+    target_id: string
+    target_name: string
+  }>(`/routes/${routeId}/targets/${targetId}`, {
+    method: "POST",
+  })
+}
+
+export async function detachTargetFromRoute(
+  routeId: string,
+  targetId: string
+) {
+  return apiFetch<{
+    success: boolean
+    route_id: number
+    target_id: string
+  }>(`/routes/${routeId}/targets/${targetId}`, {
+    method: "DELETE",
+  })
 }

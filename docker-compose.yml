@@ -68,6 +68,9 @@ services:
       AWS_ENDPOINT_URL: http://localstack:4566
       AWS_REGION: us-east-1
 
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     dns:
       - 8.8.8.8
       - 1.1.1.1
