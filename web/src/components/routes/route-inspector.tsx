@@ -1,325 +1,3 @@
-// "use client"
-
-// import {
-//   Check,
-//   Copy,
-//   ExternalLink,
-//   Link2,
-//   Route as RouteIcon,
-// } from "lucide-react"
-
-// import { useState } from "react"
-
-// import { Route } from "@/types/route"
-
-// type Props = {
-//   route: Route | null
-// }
-
-// const API_URL =
-//   process.env.NEXT_PUBLIC_API_URL ||
-//   "http://localhost:3001"
-
-// export function RouteInspector({
-//   route,
-// }: Props) {
-//   const [copied, setCopied] =
-//     useState(false)
-
-//   if (!route) {
-//     return (
-//       <div className="flex h-full items-center justify-center px-6 text-center">
-//         <div>
-//           <RouteIcon className="mx-auto h-8 w-8 text-muted-foreground" />
-
-//           <p className="mt-3 text-sm font-medium">
-//             Select a route
-//           </p>
-
-//           <p className="mt-1 text-xs text-muted-foreground">
-//             Route details and webhook endpoint
-//             information will appear here.
-//           </p>
-//         </div>
-//       </div>
-//     )
-//   }
-
-//   const endpoint =
-//     `${API_URL}/r/${route.token}/${route.path}`
-
-//   async function copyEndpoint() {
-//     try {
-//       await navigator.clipboard.writeText(
-//         endpoint
-//       )
-
-//       setCopied(true)
-
-//       window.setTimeout(() => {
-//         setCopied(false)
-//       }, 1600)
-//     } catch {
-//       setCopied(false)
-//     }
-//   }
-
-//   return (
-//     <div className="flex h-full flex-col overflow-auto">
-//       {/* Header */}
-
-//       <div className="border-b border-border p-5">
-//         <div className="flex items-center gap-3">
-//           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background/40">
-//             <RouteIcon className="h-4 w-4 text-orange-400" />
-//           </div>
-
-//           <div className="min-w-0">
-//             <h2 className="font-semibold">
-//               Route Inspector
-//             </h2>
-
-//             <p className="truncate text-xs text-muted-foreground">
-//               {route.path}
-//             </p>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Endpoint */}
-
-//       <div className="border-b border-border p-5">
-//         <div className="mb-3 flex items-center gap-2">
-//           <Link2 className="h-4 w-4 text-orange-400" />
-
-//           <h3 className="text-sm font-medium">
-//             Webhook Endpoint
-//           </h3>
-//         </div>
-
-//         <div className="rounded-xl border border-border bg-background/50 p-3">
-//           <p className="break-all font-mono text-xs leading-5 text-muted-foreground">
-//             {endpoint}
-//           </p>
-
-//           <div className="mt-3 flex items-center gap-2">
-//             <button
-//               type="button"
-//               onClick={copyEndpoint}
-//               className="
-//                 inline-flex items-center gap-2
-//                 rounded-lg border border-border
-//                 px-3 py-2 text-xs font-medium
-//                 transition-colors
-//                 hover:bg-accent
-//               "
-//             >
-//               {copied ? (
-//                 <>
-//                   <Check className="h-3.5 w-3.5 text-emerald-400" />
-//                   Copied
-//                 </>
-//               ) : (
-//                 <>
-//                   <Copy className="h-3.5 w-3.5" />
-//                   Copy endpoint
-//                 </>
-//               )}
-//             </button>
-
-//             <a
-//               href={`/events?route=${encodeURIComponent(
-//                 route.path
-//               )}`}
-//               className="
-//                 inline-flex items-center gap-2
-//                 rounded-lg border border-border
-//                 px-3 py-2 text-xs font-medium
-//                 transition-colors
-//                 hover:bg-accent
-//               "
-//             >
-//               <ExternalLink className="h-3.5 w-3.5" />
-//               View events
-//             </a>
-//           </div>
-//         </div>
-
-//         <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-//           Send webhook requests to this URL to
-//           route events through Hooktrace.
-//         </p>
-//       </div>
-
-//       {/* Route information */}
-
-//       <div className="space-y-4 border-b border-border p-5">
-//         <h3 className="text-sm font-medium">
-//           Route Details
-//         </h3>
-
-//         <Info
-//           label="Provider"
-//           value={route.provider}
-//         />
-
-//         <Info
-//           label="Mode"
-//           value={
-//             <span className="capitalize">
-//               {route.mode}
-//             </span>
-//           }
-//         />
-
-//         <Info
-//           label="Status"
-//           value={
-//             <Status status={route.status} />
-//           }
-//         />
-
-//         <Info
-//           label="Throughput"
-//           value={`${route.throughput}/m`}
-//         />
-
-//         <Info
-//           label="Failures"
-//           value={route.failures}
-//         />
-
-//         <Info
-//           label="Destinations"
-//           value={route.destinations}
-//         />
-
-//         <Info
-//           label="Last seen"
-//           value={route.lastSeen ?? "Never"}
-//         />
-//       </div>
-
-//       {/* Targets */}
-
-//       <div className="border-b border-border p-5">
-//         <h3 className="mb-4 text-sm font-medium">
-//           Delivery Targets
-//         </h3>
-
-//         <div className="space-y-2">
-//           <Target
-//             label="Development"
-//             value={route.devTarget}
-//           />
-
-//           <Target
-//             label="Production"
-//             value={route.prodTarget}
-//           />
-//         </div>
-//       </div>
-
-//       {/* Credentials */}
-
-//       <div className="p-5">
-//         <h3 className="mb-4 text-sm font-medium">
-//           Endpoint Credentials
-//         </h3>
-
-//         <div className="rounded-xl border border-border bg-background/40 p-3">
-//           <p className="text-[11px] text-muted-foreground">
-//             Endpoint token
-//           </p>
-
-//           <p className="mt-1 break-all font-mono text-xs">
-//             {route.token}
-//           </p>
-//         </div>
-
-//         {route.secret && (
-//           <div className="mt-2 rounded-xl border border-border bg-background/40 p-3">
-//             <p className="text-[11px] text-muted-foreground">
-//               Signing secret
-//             </p>
-
-//             <p className="mt-1 break-all font-mono text-xs">
-//               {route.secret}
-//             </p>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   )
-// }
-
-// function Info({
-//   label,
-//   value,
-// }: {
-//   label: string
-//   value: React.ReactNode
-// }) {
-//   return (
-//     <div className="flex items-center justify-between gap-4 text-sm">
-//       <span className="text-muted-foreground">
-//         {label}
-//       </span>
-
-//       <span className="text-right">
-//         {value}
-//       </span>
-//     </div>
-//   )
-// }
-
-// function Target({
-//   label,
-//   value,
-// }: {
-//   label: string
-//   value?: string | null
-// }) {
-//   return (
-//     <div className="rounded-lg border border-border bg-background/30 p-3">
-//       <p className="text-[11px] text-muted-foreground">
-//         {label}
-//       </p>
-
-//       <p className="mt-1 truncate text-sm">
-//         {value || "Not configured"}
-//       </p>
-//     </div>
-//   )
-// }
-
-// function Status({
-//   status,
-// }: {
-//   status: Route["status"]
-// }) {
-//   const styles = {
-//     active:
-//       "bg-emerald-500/10 text-emerald-400",
-//     paused:
-//       "bg-amber-500/10 text-amber-400",
-//     error:
-//       "bg-rose-500/10 text-rose-400",
-//   }
-
-//   return (
-//     <span
-//       className={`rounded-full px-2 py-1 text-xs capitalize ${styles[status]}`}
-//     >
-//       {status}
-//     </span>
-//   )
-// }
-
-
-
-
-
 "use client"
 
 import {
@@ -339,14 +17,17 @@ import { useEffect, useMemo, useState } from "react"
 
 import { Route } from "@/types/route"
 import type { Destination } from "@/types/destinations"
+import type { AggregationRule } from "@/types/aggregation"
 
 import {
   attachTargetToRoute,
   detachTargetFromRoute,
   getRouteTargets,
+  updateRouteAggregation,
 } from "@/lib/services/routes"
 
 import { getDestinations } from "@/lib/services/destinations"
+import { getAggregationRules } from "@/lib/services/aggregation"
 
 type RouteTarget = {
   id: string
@@ -394,6 +75,21 @@ export function RouteInspector({
     null
   )
 
+  const [aggregationRules, setAggregationRules] =
+    useState<AggregationRule[]>([])
+
+  const [loadingAggregationRules, setLoadingAggregationRules] =
+    useState(false)
+
+  const [aggregationEnabled, setAggregationEnabled] =
+    useState(false)
+
+  const [aggregationRuleId, setAggregationRuleId] =
+    useState<string | null>(null)
+
+  const [savingAggregation, setSavingAggregation] =
+    useState(false)
+
   const endpoint = route
     ? `${API_URL}/r/${route.token}/${route.path}`
     : ""
@@ -414,6 +110,7 @@ export function RouteInspector({
       )
 
       setTargets([])
+
       setError(
         error instanceof Error
           ? error.message
@@ -448,16 +145,55 @@ export function RouteInspector({
     }
   }
 
+  async function loadAggregationRules() {
+    setLoadingAggregationRules(true)
+
+    try {
+      const response =
+        await getAggregationRules()
+
+      setAggregationRules(
+        response.items ?? []
+      )
+    } catch (error) {
+      console.error(
+        "Failed to load aggregation rules:",
+        error
+      )
+
+      setAggregationRules([])
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load aggregation rules"
+      )
+    } finally {
+      setLoadingAggregationRules(false)
+    }
+  }
+
   useEffect(() => {
     setShowAdd(false)
     setError(null)
     setTargets([])
 
     if (!route) {
+      setAggregationEnabled(false)
+      setAggregationRuleId(null)
       return
     }
 
+    setAggregationEnabled(
+      route.aggregationEnabled
+    )
+
+    setAggregationRuleId(
+      route.aggregationRuleId
+    )
+
     void loadTargets(route.id)
+    void loadAggregationRules()
   }, [route?.id])
 
   const availableDestinations = useMemo(() => {
@@ -471,6 +207,13 @@ export function RouteInspector({
         !attachedIds.has(destination.id)
     )
   }, [destinations, targets])
+
+  const availableAggregationRules =
+    useMemo(() => {
+      return aggregationRules.filter(
+        (rule) => rule.enabled
+      )
+    }, [aggregationRules])
 
   async function openAddDestination() {
     setShowAdd((current) => !current)
@@ -545,6 +288,59 @@ export function RouteInspector({
       )
     } finally {
       setDetaching(null)
+    }
+  }
+
+  async function handleAggregationChange(
+    enabled: boolean
+  ) {
+    if (!route) {
+      return
+    }
+
+    if (
+      enabled &&
+      !aggregationRuleId
+    ) {
+      setError(
+        "Select an aggregation rule first"
+      )
+      return
+    }
+
+    setSavingAggregation(true)
+    setError(null)
+
+    try {
+      const result =
+        await updateRouteAggregation(
+          route.id,
+          enabled,
+          enabled
+            ? aggregationRuleId
+            : null
+        )
+
+      setAggregationEnabled(
+        result.aggregation_enabled
+      )
+
+      setAggregationRuleId(
+        result.aggregation_rule_id
+      )
+    } catch (error) {
+      console.error(
+        "Failed to update aggregation:",
+        error
+      )
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to update aggregation"
+      )
+    } finally {
+      setSavingAggregation(false)
     }
   }
 
@@ -717,6 +513,189 @@ export function RouteInspector({
           label="Last seen"
           value={route.lastSeen ?? "Never"}
         />
+      </div>
+
+      {/* Aggregation */}
+
+      <div className="border-b border-border p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-medium">
+            Aggregation
+          </h3>
+
+          <span
+            className={`
+              rounded-full px-2 py-1
+              text-[10px]
+              ${
+                aggregationEnabled
+                  ? "bg-emerald-500/10 text-emerald-400"
+                  : "bg-muted text-muted-foreground"
+              }
+            `}
+          >
+            {aggregationEnabled
+              ? "Enabled"
+              : "Disabled"}
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label
+              htmlFor="aggregation-rule"
+              className="mb-1.5 block text-[11px] text-muted-foreground"
+            >
+              Aggregation rule
+            </label>
+
+            <select
+              id="aggregation-rule"
+              value={aggregationRuleId ?? ""}
+              onChange={(event) =>
+                setAggregationRuleId(
+                  event.target.value || null
+                )
+              }
+              disabled={
+                loadingAggregationRules ||
+                savingAggregation
+              }
+              className="
+                w-full rounded-lg
+                border border-border
+                bg-background
+                px-3 py-2
+                text-xs
+                outline-none
+                transition-colors
+                focus:border-orange-400/50
+                disabled:opacity-50
+              "
+            >
+              <option value="">
+                {loadingAggregationRules
+                  ? "Loading rules..."
+                  : availableAggregationRules.length === 0
+                    ? "No enabled rules available"
+                    : "Select a rule"}
+              </option>
+
+              {availableAggregationRules.map(
+                (rule) => (
+                  <option
+                    key={rule.id}
+                    value={rule.id}
+                  >
+                    {rule.name}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+
+          {aggregationRuleId && (
+            <div className="rounded-lg border border-border bg-background/30 p-3">
+              {(() => {
+                const rule =
+                  aggregationRules.find(
+                    (item) =>
+                      item.id ===
+                      aggregationRuleId
+                  )
+
+                if (!rule) {
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      Selected rule is no longer
+                      available.
+                    </p>
+                  )
+                }
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-muted-foreground">
+                        Mode
+                      </span>
+
+                      <span className="text-xs capitalize">
+                        {rule.config.mode}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-muted-foreground">
+                        Batch size
+                      </span>
+
+                      <span className="text-xs">
+                        {rule.config.maxBatchSize ??
+                          "—"}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-muted-foreground">
+                        Timeout
+                      </span>
+
+                      <span className="text-xs">
+                        {rule.config.timeoutMs
+                          ? `${rule.config.timeoutMs}ms`
+                          : "—"}
+                      </span>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              void handleAggregationChange(
+                !aggregationEnabled
+              )
+            }
+            disabled={
+              savingAggregation ||
+              (aggregationEnabled === false &&
+                !aggregationRuleId)
+            }
+            className="
+              inline-flex w-full
+              items-center justify-center
+              gap-2
+              rounded-lg
+              border border-border
+              px-3 py-2
+              text-xs font-medium
+              transition-colors
+              hover:bg-accent
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
+          >
+            {savingAggregation ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : aggregationEnabled ? (
+              "Disable aggregation"
+            ) : (
+              "Enable aggregation"
+            )}
+          </button>
+
+          <p className="text-[11px] leading-4 text-muted-foreground">
+            Aggregation batches matching webhook
+            events before delivery.
+          </p>
+        </div>
       </div>
 
       {/* Delivery Targets */}

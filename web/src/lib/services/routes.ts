@@ -5,23 +5,27 @@ const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:3001"
 
-  type BackendRoute = {
-    id: string
-    token: string
-    route: string
-    mode: "dev" | "prod"
-    dev_target?: string | null
-    prod_target?: string | null
-    created_at?: string | null
-    provider?: string | null
-    status?: string | null
-    secret?: string | null
-  
-    throughput?: number | null
-    failures?: number | null
-    last_seen?: string | null
-    destinations?: number | null
-  }
+type BackendRoute = {
+  id: string
+  token: string
+  route: string
+  mode: "dev" | "prod"
+  dev_target?: string | null
+  prod_target?: string | null
+  created_at?: string | null
+  provider?: string | null
+  status?: string | null
+  secret?: string | null
+
+  throughput?: number | null
+  failures?: number | null
+  last_seen?: string | null
+  destinations?: number | null
+
+  aggregation_enabled?: boolean | null
+  aggregation_rule_id?: string | null
+  aggregation_rule_name?: string | null
+}
 
 type RoutesResponse = {
   items?: BackendRoute[]
@@ -74,50 +78,59 @@ function formatLastSeen(
 }
 
 function normalizeRoute(
-    route: BackendRoute
-  ): Route {
-    return {
-      id: String(route.id),
-  
-      token: route.token,
-  
-      path: route.route,
-  
-      provider: route.provider || "generic",
-  
-      mode: route.mode || "dev",
-  
-      status:
-        route.status === "paused"
-          ? "paused"
-          : route.status === "error"
-            ? "error"
-            : "active",
-  
-      devTarget: route.dev_target,
-  
-      prodTarget: route.prod_target,
-  
-      secret: route.secret,
-  
-      throughput:
-        Number(route.throughput) || 0,
-  
-      failures:
-        Number(route.failures) || 0,
-  
-      destinations:
-        Number(route.destinations) || 0,
-  
-      lastSeen:
-        formatLastSeen(
-          route.last_seen ||
-          route.created_at
-        ),
-  
-      createdAt: route.created_at,
-    }
+  route: BackendRoute
+): Route {
+  return {
+    id: String(route.id),
+
+    token: route.token,
+
+    path: route.route,
+
+    provider: route.provider || "generic",
+
+    mode: route.mode || "dev",
+
+    status:
+      route.status === "paused"
+        ? "paused"
+        : route.status === "error"
+          ? "error"
+          : "active",
+
+    devTarget: route.dev_target,
+
+    prodTarget: route.prod_target,
+
+    secret: route.secret,
+
+    throughput:
+      Number(route.throughput) || 0,
+
+    failures:
+      Number(route.failures) || 0,
+
+    destinations:
+      Number(route.destinations) || 0,
+
+    aggregationEnabled:
+      Boolean(route.aggregation_enabled),
+
+    aggregationRuleId:
+      route.aggregation_rule_id ?? null,
+
+    aggregationRuleName:
+      route.aggregation_rule_name ?? null,
+
+    lastSeen:
+      formatLastSeen(
+        route.last_seen ||
+        route.created_at
+      ),
+
+    createdAt: route.created_at,
   }
+}
 
 export async function getRoutes(): Promise<Route[]> {
   const response = await fetch(
@@ -153,9 +166,9 @@ export async function getRoutes(): Promise<Route[]> {
   return items.map(normalizeRoute)
 }
 
-
-
-export async function getRouteTargets(routeId: string) {
+export async function getRouteTargets(
+  routeId: string
+) {
   return apiFetch<{
     items: Array<{
       id: string
@@ -194,5 +207,24 @@ export async function detachTargetFromRoute(
     target_id: string
   }>(`/routes/${routeId}/targets/${targetId}`, {
     method: "DELETE",
+  })
+}
+
+export async function updateRouteAggregation(
+  routeId: string,
+  enabled: boolean,
+  ruleId?: string | null
+) {
+  return apiFetch<{
+    route_id: number
+    aggregation_enabled: boolean
+    aggregation_rule_id: string | null
+    aggregation_rule_name: string | null
+  }>(`/routes/${routeId}/aggregation`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      enabled,
+      rule_id: ruleId ?? null,
+    }),
   })
 }

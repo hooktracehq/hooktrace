@@ -33,6 +33,9 @@ def list_routes(
                     r.created_at,
                     r.secret,
                     r.provider,
+                    r.aggregation_enabled,
+                    r.aggregation_rule_id,
+                    ar.name AS aggregation_rule_name,
 
                     COUNT(e.id) AS throughput,
 
@@ -44,9 +47,10 @@ def list_routes(
                     ) AS failures,
 
                     MAX(e.created_at) AS last_seen,
+
                     COUNT(
-    DISTINCT rdt.target_id
-) AS destinations,
+                        DISTINCT rdt.target_id
+                    ) AS destinations,
 
                     'active' AS status
 
@@ -55,9 +59,13 @@ def list_routes(
                 LEFT JOIN webhook_events e
                     ON e.route_id = r.id
 
+                LEFT JOIN aggregation_rules ar
+                    ON ar.id = r.aggregation_rule_id
+                    AND ar.user_id = r.user_id
+
                 LEFT JOIN route_delivery_targets rdt
-    ON rdt.route_id = r.id
-    AND rdt.enabled = TRUE
+                    ON rdt.route_id = r.id
+                    AND rdt.enabled = TRUE
 
                 WHERE r.user_id = :user_id
 
@@ -71,6 +79,9 @@ def list_routes(
                     r.created_at,
                     r.secret,
                     r.provider,
+                    r.aggregation_enabled,
+                    r.aggregation_rule_id,
+                    ar.name,
                     r.tunnel_id
 
                 ORDER BY r.created_at DESC
@@ -93,20 +104,41 @@ def list_routes(
                     "created_at": row["created_at"],
                     "secret": row["secret"],
                     "provider": row["provider"] or "generic",
+
+                    "aggregation_enabled": bool(
+                        row["aggregation_enabled"]
+                    ),
+
+                    "aggregation_rule_id": (
+                        str(row["aggregation_rule_id"])
+                        if row["aggregation_rule_id"]
+                        else None
+                    ),
+
+                    "aggregation_rule_name": (
+                        row["aggregation_rule_name"]
+                        if row["aggregation_rule_name"]
+                        else None
+                    ),
+
                     "status": row["status"],
+
                     "throughput": int(
                         row["throughput"] or 0
                     ),
+
                     "failures": int(
                         row["failures"] or 0
                     ),
+
                     "last_seen": (
                         row["last_seen"].isoformat()
                         if row["last_seen"]
                         else None
                     ),
+
                     "destinations": int(
-                     row["destinations"] or 0
+                        row["destinations"] or 0
                     ),
                 }
                 for row in rows
@@ -268,6 +300,162 @@ def create_route(
         db.close()
 
 
+@router.patch("/{route_id}/aggregation")
+def update_route_aggregation(
+    route_id: int,
+    payload: dict,
+    user_id: str = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        route = db.execute(
+            text(
+                """
+                SELECT id
+                FROM webhook_routes
+                WHERE id = :route_id
+                AND user_id = :user_id
+                """
+            ),
+            {
+                "route_id": route_id,
+                "user_id": user_id,
+            },
+        ).fetchone()
+
+        if not route:
+            raise HTTPException(
+                status_code=404,
+                detail="Route not found",
+            )
+
+        enabled = bool(
+            payload.get("enabled", False)
+        )
+
+        rule_id = payload.get("rule_id")
+
+        if enabled:
+            if not rule_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Aggregation rule required when enabling aggregation",
+                )
+
+            rule = db.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM aggregation_rules
+                    WHERE id = :rule_id
+                    AND user_id = :user_id
+                    """
+                ),
+                {
+                    "rule_id": rule_id,
+                    "user_id": user_id,
+                },
+            ).fetchone()
+
+            if not rule:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Aggregation rule not found",
+                )
+
+            db.execute(
+                text(
+                    """
+                    UPDATE webhook_routes
+                    SET
+                        aggregation_enabled = TRUE,
+                        aggregation_rule_id = :rule_id
+                    WHERE id = :route_id
+                    AND user_id = :user_id
+                    """
+                ),
+                {
+                    "route_id": route_id,
+                    "user_id": user_id,
+                    "rule_id": rule_id,
+                },
+            )
+
+        else:
+            db.execute(
+                text(
+                    """
+                    UPDATE webhook_routes
+                    SET
+                        aggregation_enabled = FALSE,
+                        aggregation_rule_id = NULL
+                    WHERE id = :route_id
+                    AND user_id = :user_id
+                    """
+                ),
+                {
+                    "route_id": route_id,
+                    "user_id": user_id,
+                },
+            )
+
+        db.commit()
+
+        result = db.execute(
+            text(
+                """
+                SELECT
+                    r.id,
+                    r.aggregation_enabled,
+                    r.aggregation_rule_id,
+                    ar.name AS aggregation_rule_name
+                FROM webhook_routes r
+                LEFT JOIN aggregation_rules ar
+                    ON ar.id = r.aggregation_rule_id
+                    AND ar.user_id = r.user_id
+                WHERE r.id = :route_id
+                AND r.user_id = :user_id
+                """
+            ),
+            {
+                "route_id": route_id,
+                "user_id": user_id,
+            },
+        ).mappings().one()
+
+        return {
+            "route_id": result["id"],
+            "aggregation_enabled": bool(
+                result["aggregation_enabled"]
+            ),
+            "aggregation_rule_id": (
+                str(result["aggregation_rule_id"])
+                if result["aggregation_rule_id"]
+                else None
+            ),
+            "aggregation_rule_name": (
+                result["aggregation_rule_name"]
+                if result["aggregation_rule_name"]
+                else None
+            ),
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as error:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        )
+
+    finally:
+        db.close()
+
 
 @router.get("/{route_id}/targets")
 def list_route_targets(
@@ -346,7 +534,6 @@ def list_route_targets(
 
     finally:
         db.close()
-
 
 
 @router.post("/{route_id}/targets/{target_id}")
@@ -463,7 +650,6 @@ def attach_target_to_route(
 
     finally:
         db.close()
-
 
 
 @router.delete("/{route_id}/targets/{target_id}")

@@ -33,4 +33,10 @@ export type RouteStatus =
     secret?: string | null
   
     createdAt?: string | null
+
+    aggregationEnabled: boolean
+
+aggregationRuleId: string | null
+
+aggregationRuleName: string | null
   }
