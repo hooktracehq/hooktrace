@@ -268,7 +268,9 @@ def deliver_event(
                     AND status IN (
                         'pending',
                         'queued',
-                        'retrying'
+                        'retrying',
+                        'aggregated'
+
                     )
                 """
             ),
