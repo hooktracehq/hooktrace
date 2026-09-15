@@ -8,7 +8,7 @@ import { QueryKeys } from "@/lib/query-keys"
 
 const WS_URL =
   process.env.NEXT_PUBLIC_WS_URL ??
-  "ws://localhost:3001/ws/events"
+  "ws://localhost:3001/ws/stream"
 
 export function useTunnelRealtime(
   tunnelId?: string,

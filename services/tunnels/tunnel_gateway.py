@@ -30,7 +30,7 @@ async def tunnel_gateway(
 
         while True:
 
-            raw = await websocket.receive_text()
+            # raw = await websocket.receive_text()
 
             data = await websocket.receive_json()
 
