@@ -120,7 +120,10 @@ export function TunnelQuickStart({
               and your local machine.
             </p>
 
-            <TunnelCli token={token} />
+            <TunnelCli
+  token={tunnel.token}
+  localUrl={tunnel.localUrl}
+/>
           </div>
         </div>
 

@@ -87,9 +87,10 @@ export default function TunnelPage() {
         stats={stats}
       />
 
-      <TunnelCli
-        token={tunnel.token}
-      />
+<TunnelCli
+  token={tunnel.token}
+  localUrl={tunnel.localUrl}
+/>
 
       <TunnelRequestTable
         logs={logs}

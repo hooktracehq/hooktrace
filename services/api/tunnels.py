@@ -144,7 +144,7 @@ def create_tunnel(
             text("""
                 INSERT INTO dev_tunnels 
                 (id, user_id, name, local_url, public_url, token, status)
-                VALUES (:id, :user_id, :name, :local_url, :public_url, :token, 'active')
+                VALUES (:id, :user_id, :name, :local_url, :public_url, :token, 'offline')
             """),
             {
                 "id": tunnel_id,
@@ -163,7 +163,7 @@ def create_tunnel(
             "localUrl": request.local_url,
             "publicUrl": public_url,
             "token": token,
-            "status": "active",
+            "status": "offline",
             "createdAt": datetime.utcnow().isoformat(),
             "lastUsed": None,
             "requestCount": 0,

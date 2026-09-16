@@ -17,6 +17,7 @@ export function useTunnelRealtime(
 
   useEffect(() => {
     let disposed = false
+    console.log("[TunnelRealtime] WS URL:", WS_URL)
 
     const socket = new WebSocket(
       WS_URL,

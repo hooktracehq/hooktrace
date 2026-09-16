@@ -191,8 +191,9 @@ export function TunnelCard({
       {/* CLI */}
 
       <TunnelCli
-        token={tunnel.token}
-      />
+  token={tunnel.token}
+  localUrl={tunnel.localUrl}
+/>
 
       {/* Footer */}
 

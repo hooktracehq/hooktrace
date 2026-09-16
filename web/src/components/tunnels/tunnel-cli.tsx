@@ -9,18 +9,28 @@ import {
 
 type Props = {
   token: string
+  localUrl: string
 }
 
 export function TunnelCli({
   token,
+  localUrl,
 }: Props) {
   const [copied, setCopied] =
     useState(false)
 
-console.log(token)
+  const localPort = (() => {
+    try {
+      const url = new URL(localUrl)
+
+      return url.port || "80"
+    } catch {
+      return "80"
+    }
+  })()
 
   const command =
-    `python -m services.cli.listen 3000 ${token}`
+    `python -m services.cli.listen ${localPort} ${token}`
 
   async function copyCommand() {
     await navigator.clipboard.writeText(
@@ -56,16 +66,15 @@ console.log(token)
         "
       >
         <div className="flex items-center gap-2">
-
           <Terminal className="h-4 w-4 text-orange-400" />
 
           <span className="text-sm font-medium">
             CLI Command
           </span>
-
         </div>
 
         <button
+          type="button"
           onClick={copyCommand}
           className="
             flex
@@ -102,7 +111,7 @@ console.log(token)
           text-orange-300
         "
       >
-{command}
+        {command}
       </pre>
     </div>
   )
