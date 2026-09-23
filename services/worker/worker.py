@@ -143,6 +143,12 @@ def finalize_replay_job_for_event(
     Finalize replay jobs associated with this event
     once all replay events reach a terminal state.
 
+    A replay job is:
+
+    - completed -> when all replay events completed
+    - failed    -> when at least one replay event failed
+    - cancelled -> when the job was cancelled
+
     Cancelled replay events are also terminal.
     """
 
@@ -163,6 +169,10 @@ def finalize_replay_job_for_event(
 
         job_id = job[0]
 
+        # -------------------------------------------------
+        # Check whether unfinished child events remain
+        # -------------------------------------------------
+
         unfinished = db.execute(
             text(
                 """
@@ -182,32 +192,117 @@ def finalize_replay_job_for_event(
             },
         ).scalar()
 
-        if unfinished == 0:
+        if unfinished != 0:
+            continue
 
-            # Don't overwrite a cancelled job.
-            db.execute(
-                text(
-                    """
-                    UPDATE replay_jobs
-                    SET
-                        finished_at = COALESCE(
-                            finished_at,
-                            NOW()
-                        )
-                    WHERE
-                        id = :job_id
-                        AND finished_at IS NULL
-                    """
-                ),
-                {
-                    "job_id": job_id,
-                },
-            )
+        # -------------------------------------------------
+        # Determine final job status
+        # -------------------------------------------------
 
-            print(
-                f"[Replay] Job {job_id} finished"
-            )
+        failed = db.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM replay_job_events
+                WHERE
+                    replay_job_id = :job_id
+                    AND status = 'failed'
+                """
+            ),
+            {
+                "job_id": job_id,
+            },
+        ).scalar()
 
+        completed = db.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM replay_job_events
+                WHERE
+                    replay_job_id = :job_id
+                    AND status = 'completed'
+                """
+            ),
+            {
+                "job_id": job_id,
+            },
+        ).scalar()
+
+        cancelled = db.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM replay_job_events
+                WHERE
+                    replay_job_id = :job_id
+                    AND status = 'cancelled'
+                """
+            ),
+            {
+                "job_id": job_id,
+            },
+        ).scalar()
+
+        total = db.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM replay_job_events
+                WHERE replay_job_id = :job_id
+                """
+            ),
+            {
+                "job_id": job_id,
+            },
+        ).scalar()
+
+        # -------------------------------------------------
+        # Decide final status
+        # -------------------------------------------------
+
+        if cancelled == total:
+            final_status = "cancelled"
+
+        elif failed > 0:
+            final_status = "failed"
+
+        elif completed == total:
+            final_status = "completed"
+
+        else:
+            # Defensive fallback.
+            continue
+
+        # -------------------------------------------------
+        # Finalize parent replay job
+        # -------------------------------------------------
+
+        db.execute(
+            text(
+                """
+                UPDATE replay_jobs
+                SET
+                    status = :status,
+                    finished_at = COALESCE(
+                        finished_at,
+                        NOW()
+                    )
+                WHERE
+                    id = :job_id
+                    AND finished_at IS NULL
+                """
+            ),
+            {
+                "job_id": job_id,
+                "status": final_status,
+            },
+        )
+
+        print(
+            f"[Replay] Job {job_id} finished with status "
+            f"{final_status}"
+        )
 
 # =========================================================
 # EVENT DELIVERY

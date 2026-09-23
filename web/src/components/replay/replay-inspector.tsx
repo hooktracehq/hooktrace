@@ -515,41 +515,44 @@ export function ReplayInspector({
             </button>
 
             {/* Cancel Replay */}
-            <button
-              onClick={
-                handleCancelReplay
-              }
-              disabled={
-                !canCancel ||
-                cancelling
-              }
-              className="
-                flex w-full
-                items-center justify-center gap-2
-                rounded-xl
-                border border-rose-500/20
-                bg-rose-500/10
-                px-4 py-3
-                text-sm font-medium
-                text-rose-400
-                transition-colors
-                hover:bg-rose-500/15
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
+            
 
-              {cancelling ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Ban className="h-4 w-4" />
-              )}
+{canCancel && (
+  <button
+    onClick={handleCancelReplay}
+    disabled={cancelling}
+    className="
+      flex
+      w-full
+      items-center
+      justify-center
+      gap-2
+      rounded-xl
+      border
+      border-rose-500/20
+      bg-rose-500/10
+      px-4
+      py-3
+      text-sm
+      font-medium
+      text-rose-400
+      transition-colors
+      hover:bg-rose-500/15
+      disabled:cursor-not-allowed
+      disabled:opacity-40
+    "
+  >
+    {cancelling ? (
+      <Loader2 className="h-4 w-4 animate-spin" />
+    ) : (
+      <Ban className="h-4 w-4" />
+    )}
 
-              {cancelling
-                ? "Cancelling..."
-                : "Cancel Replay"}
-
-            </button>
+    {cancelling
+      ? "Cancelling..."
+      : "Cancel Replay"}
+  </button>
+)}
 
             {/* View Original Event */}
             <button

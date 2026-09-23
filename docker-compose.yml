@@ -1,4 +1,3 @@
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -48,7 +47,13 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,10 +79,10 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
-    
 
     ports:
       - "8001:8001"
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +90,7 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
+
     restart: unless-stopped
 
   aggregation-worker:
@@ -93,8 +99,10 @@ services:
       dockerfile: services/worker/Dockerfile
     container_name: hooktrace-aggregation-worker
     command: python -m services.worker.aggregation_worker
+
     volumes:
       - ./services:/app/services
+
     environment:
       DATABASE_URL: postgresql://hooktrace:hooktrace_dev@postgres:5432/hooktrace
       REDIS_URL: redis://redis:6379
@@ -104,8 +112,8 @@ services:
       AWS_REGION: us-east-1
 
     dns:
-    - 8.8.8.8
-    - 1.1.1.1
+      - 8.8.8.8
+      - 1.1.1.1
 
     depends_on:
       postgres:
@@ -114,6 +122,7 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
+
     restart: unless-stopped
 
   prometheus:
@@ -158,7 +167,6 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-  
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -169,7 +177,6 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-
 
   localstack:
     image: localstack/localstack:dev
@@ -188,14 +195,11 @@ services:
     build:
       context: .
       dockerfile: services/shared/grpc/Dockerfile
-
     container_name: hooktrace-grpc
-
     ports:
       - "50051:50051"
-
     restart: unless-stopped
-  
+
 volumes:
   postgres_data:
   redis_data:

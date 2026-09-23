@@ -148,39 +148,24 @@ export function ReplayWorkspace() {
   // =====================================================
 
   const stats = useMemo(() => {
-
     return {
-      queued: replays.reduce(
-        (sum, item) =>
-          sum +
-          (item.queued_events || 0),
-        0
-      ),
-
-      running: replays.reduce(
-        (sum, item) =>
-          sum +
-          (item.running_events || 0),
-        0
-      ),
-
-      completed: replays.reduce(
-        (sum, item) =>
-          sum +
-          (item.completed_events || 0),
-        0
-      ),
-
-      failed: replays.reduce(
-        (sum, item) =>
-          sum +
-          (item.failed_events || 0),
-        0
-      ),
+      queued: replays.filter(
+        (item) => item.status === "queued"
+      ).length,
+  
+      running: replays.filter(
+        (item) => item.status === "running"
+      ).length,
+  
+      completed: replays.filter(
+        (item) => item.status === "completed"
+      ).length,
+  
+      failed: replays.filter(
+        (item) => item.status === "failed"
+      ).length,
     }
-
   }, [replays])
-
 
   // =====================================================
   // RENDER

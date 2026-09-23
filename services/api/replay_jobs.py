@@ -173,7 +173,7 @@ def replay_all_failed(
     user_id: UUID = Depends(get_current_user),
 ):
     """
-    Create a replay job containing all failed webhook
+    Create a replay job containing all dead-lettered webhook
     events belonging to the current user.
     """
 
@@ -181,7 +181,7 @@ def replay_all_failed(
 
     try:
         # -------------------------------------------------
-        # Find failed webhook events owned by this user
+        # Find DLQ webhook events owned by this user
         # -------------------------------------------------
 
         rows = db.execute(
@@ -196,7 +196,7 @@ def replay_all_failed(
 
                 WHERE
                     r.user_id = :user_id
-                    AND e.status = 'failed'
+                    AND e.status = 'dlq'
 
                 ORDER BY
                     e.id DESC
@@ -215,7 +215,7 @@ def replay_all_failed(
         if not event_ids:
             raise HTTPException(
                 status_code=404,
-                detail="No failed events found",
+                detail="No dead-lettered events found",
             )
 
         # -------------------------------------------------
@@ -251,7 +251,7 @@ def replay_all_failed(
         replay_job_id = job[0]
 
         # -------------------------------------------------
-        # Add failed events to replay job
+        # Add DLQ events to replay job
         # -------------------------------------------------
 
         for event_id in event_ids:
@@ -297,9 +297,12 @@ def replay_all_failed(
             "total_events": len(event_ids),
         }
 
+    except Exception:
+        db.rollback()
+        raise
+
     finally:
         db.close()
-
 
 # =========================================================
 # LIST REPLAY JOBS
@@ -322,8 +325,9 @@ def list_replay_jobs(
                     rj.created_at,
                     rj.started_at,
                     rj.finished_at,
+                    rj.status AS parent_status,
 
-                    rje.event_id,
+                    MIN(rje.event_id) AS event_id,
 
                     COUNT(rje.id) AS attempts,
 
@@ -342,6 +346,10 @@ def list_replay_jobs(
                     COUNT(*) FILTER (
                         WHERE rje.status = 'queued'
                     ) AS queued_events,
+
+                    COUNT(*) FILTER (
+                        WHERE rje.status = 'cancelled'
+                    ) AS cancelled_events,
 
                     MAX(e.provider) AS provider,
                     MAX(e.event_type) AS event_type
@@ -364,7 +372,7 @@ def list_replay_jobs(
                     rj.created_at,
                     rj.started_at,
                     rj.finished_at,
-                    rje.event_id
+                    rj.status
 
                 ORDER BY
                     rj.created_at DESC
@@ -382,52 +390,37 @@ def list_replay_jobs(
             failed = row["failed_events"] or 0
             running = row["running_events"] or 0
             queued = row["queued_events"] or 0
+            cancelled = row["cancelled_events"] or 0
 
             total = row["total_events"]
 
             # -------------------------------------------------
-            # Determine replay status
+            # Determine replay status from child events
             # -------------------------------------------------
 
-            if running > 0:
+            if row["parent_status"] == "cancelled":
+                replay_status = "cancelled"
+
+            elif running > 0:
                 replay_status = "running"
 
             elif queued > 0:
                 replay_status = "queued"
 
-            elif completed == total:
-                replay_status = "completed"
+            elif failed > 0 and completed > 0:
+                replay_status = "partial"
 
             elif failed == total:
                 replay_status = "failed"
 
-            elif completed > 0 and failed > 0:
-                replay_status = "partial"
+            elif completed == total:
+                replay_status = "completed"
+
+            elif cancelled == total:
+                replay_status = "cancelled"
 
             else:
-                # This can happen for a cancelled job.
-                # Check the actual parent job status below.
-                replay_status = "queued"
-
-            # -------------------------------------------------
-            # Preserve cancelled parent job status
-            # -------------------------------------------------
-
-            parent_status = db.execute(
-                text(
-                    """
-                    SELECT status
-                    FROM replay_jobs
-                    WHERE id = :job_id
-                    """
-                ),
-                {
-                    "job_id": row["id"],
-                },
-            ).scalar()
-
-            if parent_status == "cancelled":
-                replay_status = "cancelled"
+                replay_status = row["parent_status"] or "queued"
 
             jobs.append(
                 {
@@ -437,6 +430,8 @@ def list_replay_jobs(
 
                     "total_events": total,
 
+                    # For multi-event jobs the inspector needs
+                    # one representative event.
                     "event_id": row["event_id"],
 
                     "completed_events": completed,
