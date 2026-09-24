@@ -1,4 +1,3 @@
-
 "use client"
 
 import {
@@ -14,18 +13,27 @@ import {
 
 import type { Connection } from "@/types/connection"
 
-import { useConnections } from "@/hooks/connections/use-connections"
+import {
+  useConnections,
+} from "@/hooks/connections/use-connections"
 
 import { ConnectionsToolbar } from "./connections-toolbar"
 import { ConnectionsStats } from "./connections-stats"
 import { ConnectionsGrid } from "./connections-grid"
 import { ConnectionInspector } from "./connection-inspector"
+import { ConnectProviderDialog } from "./connect-provider-dialog"
 
 import { LoadingScreen } from "@/components/shared/loading-screen"
 
 export function ConnectionsWorkspace() {
   const [query, setQuery] =
     useState("")
+
+  const [connectOpen, setConnectOpen] =
+    useState(false)
+
+  const [selectedProvider, setSelectedProvider] =
+    useState<string | null>(null)
 
   const {
     data,
@@ -36,26 +44,21 @@ export function ConnectionsWorkspace() {
     return data?.items ?? []
   }, [data])
 
-console.log("data from connections : ",data)
-
-
   const filtered = useMemo(() => {
+    const normalizedQuery =
+      query.trim().toLowerCase()
+
+    if (!normalizedQuery) {
+      return connections
+    }
+
     return connections.filter(
       (connection) =>
         connection.provider
           .toLowerCase()
-          .includes(
-            query.toLowerCase()
-          )
+          .includes(normalizedQuery)
     )
   }, [connections, query])
-
-  const [
-    selectedProvider,
-    setSelectedProvider,
-  ] = useState<string | null>(
-    null
-  )
 
   const selected = useMemo(() => {
     if (!filtered.length) {
@@ -83,58 +86,105 @@ console.log("data from connections : ",data)
   }
 
   return (
-    <div
-      className="
-        flex
-        h-[calc(100vh-92px)]
-        flex-col
-        overflow-hidden
-        rounded-2xl
-        border
-        border-border
-        bg-surface-1
-      "
-    >
-      <ConnectionsToolbar
-        query={query}
-        setQuery={setQuery}
-      />
+    <>
+      <div
+        className="
+          flex
+          h-[calc(100vh-92px)]
+          flex-col
+          overflow-hidden
+          rounded-2xl
+          border
+          border-border
+          bg-surface-1
+        "
+      >
+        <ConnectionsToolbar
+          query={query}
+          setQuery={setQuery}
+          onConnect={() =>
+            setConnectOpen(true)
+          }
+        />
 
-<ConnectionsStats />
+        <ConnectionsStats />
 
-      <PanelGroup direction="horizontal">
+        {filtered.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
+              <h3 className="font-medium">
+                {query
+                  ? "No providers found"
+                  : "No providers connected"}
+              </h3>
 
-        <Panel
-          defaultSize={65}
-          minSize={45}
-        >
-          <ConnectionsGrid
-            connections={filtered}
-            selected={selected}
-            onSelect={(connection) =>
-              setSelectedProvider(
-                connection.provider
-              )
-            }
-          />
-        </Panel>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {query
+                  ? "Try another provider name."
+                  : "Connect a provider to create your first webhook endpoint."}
+              </p>
 
-        <PanelResizeHandle className="w-2 bg-border/40" />
-
-        <Panel
-          defaultSize={35}
-          minSize={25}
-        >
-          <div className="h-full border-l border-border">
-
-            <ConnectionInspector
-              connection={selected}
-            />
-
+              {!query && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConnectOpen(true)
+                  }
+                  className="
+                    mt-4
+                    rounded-lg
+                    bg-primary
+                    px-4
+                    py-2
+                    text-sm
+                    font-medium
+                    text-primary-foreground
+                  "
+                >
+                  Connect Provider
+                </button>
+              )}
+            </div>
           </div>
-        </Panel>
+        ) : (
+          <PanelGroup direction="horizontal">
+            <Panel
+              defaultSize={65}
+              minSize={45}
+            >
+              <ConnectionsGrid
+                connections={filtered}
+                selected={selected}
+                onSelect={(connection) =>
+                  setSelectedProvider(
+                    connection.provider
+                  )
+                }
+              />
+            </Panel>
 
-      </PanelGroup>
-    </div>
+            <PanelResizeHandle className="w-2 bg-border/40" />
+
+            <Panel
+              defaultSize={35}
+              minSize={25}
+            >
+              <div className="h-full border-l border-border">
+                <ConnectionInspector
+                  connection={selected}
+                />
+              </div>
+            </Panel>
+          </PanelGroup>
+        )}
+      </div>
+
+      <ConnectProviderDialog
+        open={connectOpen}
+        onClose={() =>
+          setConnectOpen(false)
+        }
+      />
+    </>
   )
 }
