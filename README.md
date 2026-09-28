@@ -1,334 +1,421 @@
-<div align="center">
+# HookTrace
 
-#  Hooktrace
+**Open-source webhook infrastructure for receiving, inspecting, delivering, retrying, and replaying webhooks.**
 
-### Programmable webhook engine with real-time visibility and intelligent processing
+HookTrace gives developers a self-hostable place to see what happens to their webhooks — from the moment an event arrives to the moment it reaches your application.
 
-**Simple. Reliable. Self-hosted.**
+Built for developers who need more visibility and control than a simple webhook endpoint provides.
 
-Built for indie hackers and startups who need webhook debugging without the enterprise price tag.
-
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/Yasir761/hooktrace?style=social)](https://github.com/Yasir761/hooktrace)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
-
-[Features](#-features) • [Quick Start](#-quick-start) • [Deployment](#-deployment) • [Documentation](#-documentation) • [Contributing](#-contributing)
-
-</div>
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/hooktracehq/hooktrace/actions/workflows/ci.yml/badge.svg)](https://github.com/hooktracehq/hooktrace/actions/workflows/ci.yml)
 
 ---
 
-##  Features
+## Why HookTrace?
 
-### Core Capabilities
+Webhooks are simple until something goes wrong.
 
--  **Instant Webhook Relay** - Create public endpoints in seconds, no configuration needed
--  **Smart Retries** - Exponential backoff with configurable policies and circuit breaking
--  **Real-time Debugging** - Event logs, request/response inspection, and manual replay
--  **Beautiful Dashboard** - Modern, dark-mode UI built with Next.js and Tailwind CSS
+A provider sends an event.
 
-### Production Ready
+Your application doesn't receive it.
 
--  **Easy Self-Hosting** - Docker Compose, Kubernetes, Railway, and Render support
--  **Persistent Storage** - PostgreSQL for reliability, Redis for queuing
--  **Async Workers** - Background job processing with horizontal scaling
--  **Signature Validation** - HMAC signing for webhook security
--  **Audit Logs** - Complete event history and tracking
+Or it receives it twice.
 
-### Advanced Features
+Or your endpoint returns `500`.
 
--  **Dead Letter Queue** - Never lose failed events, replay them anytime
--  **Local Forwarding** - Test webhooks locally without ngrok
--  **Provider Templates** - Pre-built configs for Stripe, GitHub, Razorpay, and more
--  **Idempotency Support** - Prevent duplicate event processing
--  **Event Routing** - Forward to HTTP endpoints *(more targets planned)*
+Or a downstream service is temporarily unavailable.
+
+Or you need to understand exactly what payload was sent three hours ago.
+
+**HookTrace provides the infrastructure and visibility around those events.**
+
+### With HookTrace you can
+
+* Receive webhooks through managed routes
+* Inspect webhook payloads and headers
+* Track delivery status
+* Retry failed deliveries
+* Replay events
+* Send events to configurable delivery targets
+* Monitor webhook activity
+* Stream events to the dashboard in real time
+* Run webhook tunnels during local development
+* Connect integrations
+* Monitor system metrics with Prometheus
+* Self-host the entire stack
 
 ---
 
-##  Quick Start
+## Architecture
 
-### Option 1: Docker Compose (Recommended)
+HookTrace is built as a small set of services that work together:
 
-Get up and running in under 60 seconds:
+```text
+                     ┌──────────────────┐
+                     │ Webhook Provider │
+                     │ Stripe / GitHub  │
+                     │ Razorpay / etc.  │
+                     └────────┬─────────┘
+                              │
+                              ▼
+                     ┌──────────────────┐
+                     │   HookTrace API  │
+                     │     FastAPI      │
+                     └────────┬─────────┘
+                              │
+                     ┌────────┴─────────┐
+                     │                  │
+                     ▼                  ▼
+              ┌─────────────┐    ┌─────────────┐
+              │ PostgreSQL  │    │    Redis    │
+              │   Events    │    │   Queues    │
+              │   Routes    │    │   Pub/Sub   │
+              └─────────────┘    └──────┬──────┘
+                                        │
+                                        ▼
+                                ┌────────────────┐
+                                │ Worker Service │
+                                │ Delivery/Retry │
+                                └───────┬────────┘
+                                        │
+                                        ▼
+                                ┌─────────────────┐
+                                │ Your Application│
+                                └─────────────────┘
+
+                         ▲
+                         │
+                  ┌──────┴───────┐
+                  │    Next.js   │
+                  │   Dashboard  │
+                  └──────────────┘
+```
+
+### Core components
+
+| Component      | Technology | Purpose                                    |
+| -------------- | ---------- | ------------------------------------------ |
+| API            | FastAPI    | HTTP API and webhook ingestion             |
+| Dashboard      | Next.js    | Event and infrastructure UI                |
+| Database       | PostgreSQL | Persistent application and event data      |
+| Queue / PubSub | Redis      | Background processing and realtime updates |
+| Worker         | Python     | Delivery, retries and background jobs      |
+| Tunnels        | Python     | Local webhook development                  |
+| Metrics        | Prometheus | Application metrics                        |
+
+---
+
+## Features
+
+### Webhook ingestion
+
+Create routes that receive webhook requests from external services.
+
+HookTrace records the relevant event information so you can inspect and process it asynchronously.
+
+### Event inspection
+
+Inspect:
+
+* Request payloads
+* Headers
+* Provider
+* Event type
+* Delivery status
+* Attempt count
+* Errors
+* Timestamps
+
+### Delivery
+
+Configure delivery targets and forward incoming events to your application.
+
+### Retries
+
+Failed deliveries can be retried according to the configured retry behavior.
+
+This helps protect your integration from temporary downstream failures.
+
+### Replay
+
+Replay previously received events when you need to test an endpoint, recover from a failure, or reproduce an integration problem.
+
+### Real-time dashboard
+
+HookTrace uses WebSockets and Redis Pub/Sub to provide real-time event updates to the dashboard.
+
+### Dead-letter handling
+
+Events that cannot successfully complete delivery can be surfaced as failed/dead-letter events for investigation and recovery.
+
+### Local development tunnels
+
+Use HookTrace tunnels to expose local development endpoints to webhook providers without deploying your application first.
+
+### Integrations
+
+HookTrace is designed to work with webhook-producing services and provides an integration layer for provider-specific functionality.
+
+### Observability
+
+HookTrace exposes Prometheus metrics so you can monitor the webhook infrastructure alongside the rest of your stack.
+
+---
+
+# Quick Start
+
+## Requirements
+
+Before running HookTrace locally, install:
+
+* Git
+* Docker
+* Docker Compose
+* Node.js
+* Python
+
+PostgreSQL and Redis can be run through the provided Docker setup.
+
+---
+
+## 1. Clone the repository
 
 ```bash
-git clone https://github.com/Yasir761/hooktrace.git
-cd hooktrace
-cp .env.example .env
-docker-compose up
-```
-
-**That's it!** Open `http://localhost:3000` and start relaying webhooks.
-
-### Option 2: One-Click Cloud Deploy
-
-Deploy the full stack to managed platforms:
-
-<table>
-<tr>
-<td width="33%" align="center">
-  
-**Railway**
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/Yasir761/hooktrace)
-
-*API + Worker + DB + Redis*
-
-</td>
-<td width="33%" align="center">
-
-**Render**
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Yasir761/hooktrace)
-
-*Full Stack Deployment*
-
-</td>
-<td width="33%" align="center">
-
-**Vercel**
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Yasir761/hooktrace&env=NEXT_PUBLIC_API_URL)
-
-*Dashboard Only*
-
-</td>
-</tr>
-</table>
-
-> **Note:** Vercel deploys the dashboard only. Deploy API + Worker on Railway/Render or self-host.
-
----
-
-##  System Requirements
-
-| Component | Minimum Version |
-|-----------|----------------|
-| Docker | 20.10+ |
-| Docker Compose | 2.0+ |
-| PostgreSQL | 14+ |
-| Redis | 7+ |
-| Python (dev only) | 3.9+ |
-| Node.js (dev only) | 18+ |
-
----
-
-##  Architecture
-
-```
-┌─────────────────┐
-│   Dashboard     │  Next.js + Tailwind
-│  (Port 3000)    │  Real-time UI
-└────────┬────────┘
-         │
-         │ HTTP
-         ▼
-┌─────────────────┐
-│   API Server    │  FastAPI (Python)
-│  (Port 3001)    │  Webhook ingestion & routing
-└────────┬────────┘
-         │
-         │ Enqueue jobs
-         ▼
-┌─────────────────┐       ┌──────────────┐
-│   Redis Queue   │◄──────│  PostgreSQL  │
-│                 │       │   Database   │
-└────────┬────────┘       └──────────────┘
-         │
-         │ Process jobs
-         ▼
-┌─────────────────┐
-│  Async Worker   │  Python (Redis-backed worker)
-│                 │  Retry logic & delivery
-└─────────────────┘
-```
-
-### Project Structure
-
-```
-hooktrace/
-├── services/
-│   ├── api/              # FastAPI backend
-│   └── worker/           # Python job processor
-├── web/                  # Next.js dashboard
-├── docker-compose.yml    # Local development stack
-└── .github/              # CI/CD workflows
-```
-
----
-
-##  Development
-
-### Local Setup
-
-```bash
-# Clone the repository
 git clone https://github.com/hooktracehq/hooktrace.git
 cd hooktrace
-
-# Copy environment file
-cp .env.example .env
-
-# Start development stack
-docker-compose up
 ```
 
-### Local Webhook Forwarding
+---
 
-Test webhooks without exposing your machine:
+## 2. Configure environment variables
+
+Create your local environment configuration from the example file:
 
 ```bash
-# Start local receiver
-python -m http.server 3000
-
-# Configure Hooktrace destination URL based on your setup:
+cp .env.example .env
 ```
 
-**When running Hooktrace in Docker:**
-```
-http://host.docker.internal:3000
+Then configure the required values.
+
+> **Important:** Never commit real credentials, API keys, OAuth secrets, database passwords, or production tokens to the repository.
+
+---
+
+## 3. Start the infrastructure
+
+```bash
+docker compose up -d
 ```
 
-**When running Hooktrace locally (without Docker):**
+---
+
+## 4. Start the API
+
+From the project root:
+
+```bash
+cd services
 ```
+
+Install the Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start the FastAPI application:
+
+```bash
+uvicorn api.main:app --reload
+```
+
+The API should now be available at:
+
+```text
+http://localhost:8000
+```
+
+---
+
+## 5. Start the web application
+
+In another terminal:
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+The dashboard will be available at:
+
+```text
 http://localhost:3000
 ```
 
-> **Note:** Use `host.docker.internal` when Hooktrace runs inside Docker to reach your host machine. Use `localhost` when running Hooktrace natively.
-
-No ngrok or tunneling required!
-
 ---
 
-##  Configuration
+# Your First Webhook
 
-Environment variables (see `.env.example`):
+The basic HookTrace flow is:
 
-```bash
-# Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/hooktrace
-REDIS_URL=redis://localhost:6379
-
-# API Server
-API_PORT=3001
-API_HOST=0.0.0.0
-
-# Dashboard
-NEXT_PUBLIC_API_URL=http://localhost:3001
-DASHBOARD_PORT=3000
-
-# Webhook Behavior
-WEBHOOK_MAX_RETRY_ATTEMPTS=3
-WEBHOOK_DEFAULT_TIMEOUT=30
+```text
+Provider
+   │
+   ▼
+HookTrace Route
+   │
+   ├── Store event
+   │
+   ├── Queue delivery
+   │
+   ▼
+Worker
+   │
+   ▼
+Your endpoint
 ```
 
-For production deployments, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+Create a route in the dashboard, then configure your webhook provider to send events to the generated HookTrace endpoint.
+
+Once an event arrives, you can inspect it from the dashboard and follow its delivery lifecycle.
+
+For a complete walkthrough, see:
+
+[**Getting Started →**](docs/getting-started/installation.md)
 
 ---
 
-##  Roadmap
+# Self-Hosting
 
-###  Phase 1: MVP (Complete)
-- [x] Public relay endpoints
-- [x] Event persistence & queuing
-- [x] Async worker with retries
-- [x] Basic dashboard with logs
-- [x] Docker Compose setup
+HookTrace is designed to run on infrastructure you control.
 
-###  Phase 2: Reliability (Mostly Complete)
-- [x] Dead Letter Queue
-- [x] Manual replay support
-- [x] Idempotency key support
-- [x] HMAC signature validation
-- [x] Audit logs
-- [x] WebSocket live updates
-- [x] Prometheus metrics
+You can self-host the complete stack using Docker and the project's deployment configuration.
 
-###  Phase 3: Developer Experience (Mostly Complete)
-- [x] Webhook provider templates 
-- [x] Local dev forwarding (no ngrok needed)
-- [x] Multiple delivery targets (HTTP, SQS, Kafka, Redis) 
-- [x] Event aggregation mode 
+Common deployment targets include:
 
-###  Phase 4: Advanced Features (Planned)
-- [ ] AI-powered failure analysis
-- [ ] Replay comparison view
-- [ ] Advanced routing rules
-- [ ] Auto-scaling optimization
-- [ ] Helm chart for Kubernetes
-- [ ] Terraform modules
-- [ ] SaaS deployment option
+* Docker
+* Railway
+* Render
+* Kubernetes
+* Your own VPS or cloud infrastructure
 
-[View full roadmap →](https://github.com/Yasir761/hooktrace/projects)
+See the deployment documentation:
+
+[**Self-Hosting Guide →**](docs/deployment/docker.md)
 
 ---
 
-##  Documentation
+# Project Structure
 
-- **[Deployment Guide](./DEPLOYMENT.md)** - Production deployment options
-- **[API Reference](https://hooktrace.dev/docs/api)** - REST API documentation
-- **[Contributing Guide](./CONTRIBUTING.md)** - How to contribute
-- **[FAQ](https://hooktrace.dev/docs/faq)** - Common questions
-
----
-
-##  Contributing
-
-We love contributions! Whether it's bug fixes, new features, or documentation improvements.
-
-### How to Contribute
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Issue Templates
-
--  [Bug Report](.github/ISSUE_TEMPLATE/bug_report.md)
--  [Feature Request](.github/ISSUE_TEMPLATE/feature_request.md)
--  [Documentation](.github/ISSUE_TEMPLATE/documentation.md)
-
-Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+```text
+hooktrace/
+│
+├── services/
+│   ├── api/          # FastAPI application
+│   ├── worker/       # Background delivery workers
+│   ├── tunnels/      # Local development tunnels
+│   ├── cli/          # CLI tooling
+│   └── shared/       # Shared service code
+│
+├── web/              # Next.js dashboard
+│
+├── docs/             # Documentation
+│
+├── .github/          # CI and contribution templates
+│
+├── docker-compose.yml
+├── LICENSE
+└── README.md
+```
 
 ---
 
-##  License
+# Development
 
-Licensed under the [Apache License 2.0](./LICENSE).
+HookTrace is actively developed and welcomes contributions.
 
-This means you can use Hooktrace for commercial purposes, modify it, distribute it, and use it privately. Just include the license and copyright notice.
+If you're interested in working on the project:
 
----
+1. Fork the repository.
+2. Create a branch.
+3. Make your changes.
+4. Run the relevant tests and checks.
+5. Open a pull request.
 
-##  Support & Community
+See:
 
--  **Documentation**: [hooktrace.dev/docs](https://hooktrace.dev/docs)
--  **Issues**: [GitHub Issues](https://github.com/Yasir761/hooktrace/issues)
--  **Discussions**: [GitHub Discussions](https://github.com/Yasir761/hooktrace/discussions)
-
-
----
-
-##  Acknowledgments
-
-Hooktrace stands on the shoulders of giants. Inspired by:
-
-- [Convoy](https://github.com/frain-dev/convoy) - Webhook infrastructure
-- [Hook0](https://www.hook0.com/) - Modern webhook service
-- [Svix](https://www.svix.com/) - Enterprise webhook platform
-
-Built with modern webhook best practices and a focus on developer experience.
+[**Contributing →**](CONTRIBUTING.md)
 
 ---
 
-<div align="center">
+# Roadmap
 
-**Built with ❤️ by developer, for developers**
+The project is evolving toward a complete open-source webhook infrastructure platform.
 
-⭐ Star us on GitHub — it helps!
+Areas of development include:
 
-[Report Bug](https://github.com/Yasir761/hooktrace/issues) • [Request Feature](https://github.com/Yasir761/hooktrace/issues) 
+* Webhook ingestion
+* Event inspection
+* Delivery targets
+* Retry processing
+* Event replay
+* Real-time dashboard updates
+* Local development tunnels
+* Prometheus metrics
+* Integration system
+* More provider integrations
+* Improved deployment experience
+* Expanded CLI functionality
+* More comprehensive documentation
+* Additional observability features
 
-</div>
+The roadmap is subject to change as the project develops.
+
+---
+
+# Contributing
+
+There are many ways to contribute:
+
+* Report bugs
+* Improve documentation
+* Add integrations
+* Improve the dashboard
+* Improve delivery reliability
+* Add tests
+* Improve deployment tooling
+* Suggest features
+* Submit pull requests
+
+Please read the contribution guidelines before opening a pull request.
+
+---
+
+# Security
+
+If you discover a security vulnerability, please avoid opening a public issue with sensitive details.
+
+See the project's security policy for responsible disclosure instructions.
+
+[**Security Policy →**](SECURITY.md)
+
+---
+
+# License
+
+HookTrace is open source and licensed under the **Apache License 2.0**.
+
+See [LICENSE](LICENSE) for the complete license text.
+
+---
+
+## Built for developers
+
+HookTrace exists to make webhook infrastructure easier to understand, debug, and operate.
+
+**Receive. Inspect. Deliver. Retry. Replay.**
+
+Self-host it, modify it, and build on top of it.
+
+[GitHub](https://github.com/hooktracehq/hooktrace)
