@@ -26,7 +26,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret")
+JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
 JWT_ALGO = "HS256"
 JWT_EXPIRY_HOURS = 24
 
@@ -107,7 +107,7 @@ def set_auth_cookie(response, token: str):
         key="access_token",
         value=token,
         httponly=True,
-        secure=False,   # change to True in production
+        secure=os.getenv("ENV", "development") == "production",   # change to True in production
         samesite="lax",
         max_age=60 * 60 * 24,
     )
@@ -203,7 +203,7 @@ def logout():
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        secure=False,  # True in production
+        secure=os.getenv("ENV", "development") == "production",  # True in production
         samesite="lax",
     )
 

@@ -39,6 +39,8 @@ services:
     environment:
       DATABASE_URL: postgresql://hooktrace:hooktrace_dev@postgres:5432/hooktrace
       REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     ports:
       - "3001:3001"
     depends_on:
@@ -186,7 +188,7 @@ services:
     environment:
       SERVICES: sqs
       DEBUG: 1
-      LOCALSTACK_AUTH_TOKEN: ls-sayE5357-PosU-maWu-keYA-sOwA2441d0e3
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
     volumes:
       - localstack_data:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
