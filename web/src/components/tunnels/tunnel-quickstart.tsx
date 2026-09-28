@@ -121,9 +121,9 @@ export function TunnelQuickStart({
             </p>
 
             <TunnelCli
-  token={tunnel.token}
-  localUrl={tunnel.localUrl}
-/>
+              token={token}
+              localUrl={publicUrl}
+            />
           </div>
         </div>
 
