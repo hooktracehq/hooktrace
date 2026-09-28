@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 psycopg2-binary
+psycopg[binary]
 redis
 prometheus-client
 stripe

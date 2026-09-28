@@ -73,9 +73,20 @@ Thread(
 # Middleware
 # -------------------------------------------------
 
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:3000",
+)
+
+JWT_SECRET = os.getenv(
+    "JWT_SECRET",
+    "change-me-in-production",
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        FRONTEND_URL,
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
@@ -86,12 +97,8 @@ app.add_middleware(
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv(
-        "JWT_SECRET",
-        "dev-secret",
-    ),
+    secret_key=JWT_SECRET,
 )
-
 
 # -------------------------------------------------
 # Database

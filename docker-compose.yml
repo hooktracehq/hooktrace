@@ -3,15 +3,19 @@ services:
     image: postgres:16-alpine
     container_name: hooktrace-db
     environment:
-      POSTGRES_USER: hooktrace
-      POSTGRES_PASSWORD: hooktrace_dev
-      POSTGRES_DB: hooktrace
+      POSTGRES_USER: ${POSTGRES_USER:-hooktrace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hooktrace_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-hooktrace}
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hooktrace"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-hooktrace}"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -37,8 +41,12 @@ services:
     volumes:
       - ./services:/app/services
     environment:
-      DATABASE_URL: postgresql://hooktrace:hooktrace_dev@postgres:5432/hooktrace
-      REDIS_URL: redis://redis:6379
+      ENV: ${ENV:-development}
+      NODE_ENV: ${NODE_ENV:-development}
+
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hooktrace}:${POSTGRES_PASSWORD:-hooktrace_dev}@postgres:5432/${POSTGRES_DB:-hooktrace}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     ports:
@@ -68,12 +76,13 @@ services:
     volumes:
       - ./services:/app/services
     environment:
-      DATABASE_URL: postgresql://hooktrace:hooktrace_dev@postgres:5432/hooktrace
-      REDIS_URL: redis://redis:6379
-      KAFKA_BROKERS: kafka:9092
-      RABBITMQ_HOST: rabbitmq
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_REGION: us-east-1
+      ENV: ${ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hooktrace}:${POSTGRES_PASSWORD:-hooktrace_dev}@postgres:5432/${POSTGRES_DB:-hooktrace}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -106,12 +115,13 @@ services:
       - ./services:/app/services
 
     environment:
-      DATABASE_URL: postgresql://hooktrace:hooktrace_dev@postgres:5432/hooktrace
-      REDIS_URL: redis://redis:6379
-      KAFKA_BROKERS: kafka:9092
-      RABBITMQ_HOST: rabbitmq
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_REGION: us-east-1
+      ENV: ${ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hooktrace}:${POSTGRES_PASSWORD:-hooktrace_dev}@postgres:5432/${POSTGRES_DB:-hooktrace}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
 
     dns:
       - 8.8.8.8
@@ -144,9 +154,9 @@ services:
     ports:
       - "3005:3000"
     environment:
-      - GF_SECURITY_ALLOW_EMBEDDING=true
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infra/grafana/provisioning:/etc/grafana/provisioning
@@ -177,8 +187,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
 
   localstack:
     image: localstack/localstack:dev
@@ -187,7 +197,7 @@ services:
       - "4566:4566"
     environment:
       SERVICES: sqs
-      DEBUG: 1
+      DEBUG: "1"
       LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
     volumes:
       - localstack_data:/var/lib/localstack
