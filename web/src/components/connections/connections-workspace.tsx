@@ -11,7 +11,7 @@ import {
   PanelResizeHandle,
 } from "react-resizable-panels"
 
-import type { Connection } from "@/types/connection"
+
 
 import {
   useConnections,

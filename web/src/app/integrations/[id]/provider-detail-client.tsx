@@ -2,24 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import {
-  ArrowLeft,
-  Copy,
-  Check,
-  ExternalLink,
-  Zap,
-  Code,
-  Send,
-  CheckCircle2,
-  XCircle,
-  ChevronDown,
-  ChevronUp,
-  AlertCircle,
-} from "lucide-react"
-import { motion } from "framer-motion"
 
-import { ThemeToggle } from "@/components/theme-toggle"
-import { UserNav } from "@/components/user-nav"
 import type { User } from "@/lib/auth"
 
 /* ---------------- TYPES ---------------- */
