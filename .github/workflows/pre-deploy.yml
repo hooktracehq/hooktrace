@@ -16,10 +16,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # -------------------------------
+      # CONFIGURATION VALIDATION
+      # -------------------------------
+
       - name: Validate Docker Compose configuration
         run: docker compose config
 
-      # Frontend quality
+      # -------------------------------
+      # FRONTEND QUALITY
+      # -------------------------------
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -37,14 +44,23 @@ jobs:
 
       - name: Build frontend
         working-directory: web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-key
         run: npm run build
 
-      # Backend container builds
+      # -------------------------------
+      # BACKEND CONTAINER BUILDS
+      # -------------------------------
+
       - name: Build application containers
         run: |
           docker compose build api worker grpc-test-server
 
-      # Start core services
+      # -------------------------------
+      # START CORE SERVICES
+      # -------------------------------
+
       - name: Start core services
         run: |
           docker compose up -d postgres redis api worker
@@ -52,7 +68,10 @@ jobs:
       - name: Wait for services
         run: sleep 15
 
-      # Production readiness
+      # -------------------------------
+      # PRODUCTION READINESS CHECKS
+      # -------------------------------
+
       - name: Check API health
         run: curl -f http://localhost:3001/health
 
@@ -65,7 +84,10 @@ jobs:
       - name: Verify running containers
         run: docker compose ps
 
-      # Debugging
+      # -------------------------------
+      # FAILURE DEBUGGING
+      # -------------------------------
+
       - name: Show service logs on failure
         if: failure()
         run: |
@@ -75,7 +97,10 @@ jobs:
           docker compose logs --no-color postgres || true
           docker compose logs --no-color redis || true
 
-      # Cleanup
+      # -------------------------------
+      # CLEANUP
+      # -------------------------------
+
       - name: Stop services
         if: always()
         run: docker compose down -v
